@@ -27,3 +27,7 @@ dependencies:
     version: 0.1.0
     repository: file://../transmission
     condition: transmission.enabled
+  - name: reencoder
+    version: 0.1.0
+    repository: file://../reencoder
+    condition: reencoder.enabled

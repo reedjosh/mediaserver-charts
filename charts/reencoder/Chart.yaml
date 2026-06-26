@@ -1,0 +1,8 @@
+apiVersion: v2
+name: reencoder
+description: >-
+  Scheduled library re-encoder. Periodically transcodes oversized/legacy
+  (x264) media to HEVC (or AV1) to reclaim space. CPU now, GPU-ready.
+type: application
+version: 0.1.0
+appVersion: "1.0"

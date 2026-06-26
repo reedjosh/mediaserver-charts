@@ -21,3 +21,9 @@ prowlarr:
 transmission:
   enabled: true
   # vpn keys are NOT set here - create the transmission-vpn Secret out of band.
+
+# Scheduled library re-encoder. Off by default - it rewrites media files in
+# place (parking originals in a trash dir). Enable once you're ready, ideally
+# after the GPU is in (set reencoder.gpu.enabled there too).
+reencoder:
+  enabled: false

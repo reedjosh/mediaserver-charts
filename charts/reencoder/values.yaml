@@ -1,0 +1,47 @@
+# Scheduled library re-encoder.
+# Runs on a cron schedule, finds oversized legacy (x264/etc) files and
+# re-encodes them to HEVC (or AV1) to reclaim space. Idempotent: already-HEVC/AV1
+# files are skipped, so each run chews through the remaining backlog.
+
+schedule: "0 2 * * *"        # nightly at 02:00
+concurrencyPolicy: Forbid    # never overlap runs
+node: jayrdl3803             # pin to the storage node (local reads/writes)
+
+image:
+  # CPU-only ffmpeg today. For NVENC later, swap to an ffmpeg image built with
+  # nvenc support and set gpu.enabled=true (see below).
+  repository: lscr.io/linuxserver/ffmpeg
+  tag: latest
+  pullPolicy: IfNotPresent
+
+storage:
+  dataClaim: mediaserver-data
+  mediaPath: /data/media        # where the library lives inside the volume
+  trashDir: /data/.reencode-trash  # originals parked here (not deleted) for review
+
+puid: 1000
+pgid: 1000
+
+encode:
+  codec: hevc           # hevc | av1  (HEVC = broadest direct-play; flip to av1 once clients/GPU support it)
+  crf: "20"             # x265 ~20-22 / svt-av1 ~25-30
+  preset: slow          # x265: slow|medium ; svt-av1: a number 1-12 (lower=better/slower)
+  pixfmt: yuv420p10le   # 10-bit even from 8-bit source (better compression, less banding)
+
+select:
+  maxFiles: "20"        # cap files per run so a night's work is bounded
+  minSizeMb: "3000"     # only bother with files larger than this
+  skipHdr: "1"          # 1 = leave HDR alone (re-encoding HDR safely is fiddly)
+  skip4k: "1"           # 1 = leave 2160p alone for now (focus on bloated 1080p)
+
+# GPU hardware encode (off until the card arrives). When enabled, the script
+# uses hevc_nvenc/av1_nvenc and requests the GPU resource below.
+gpu:
+  enabled: false
+  vendor: nvidia                 # nvidia | intel
+  resourceName: nvidia.com/gpu   # or gpu.intel.com/i915 for Arc
+  runtimeClassName: ""           # e.g. "nvidia" if your node uses a runtime class
+
+resources:
+  requests: { cpu: "2", memory: 2Gi }
+  limits:   { cpu: "16", memory: 8Gi }   # cap so it can't starve streaming

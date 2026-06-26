@@ -1,0 +1,69 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: reencoder
+  labels:
+    app.kubernetes.io/name: reencoder
+    app.kubernetes.io/part-of: mediaserver
+spec:
+  schedule: {{ .Values.schedule | quote }}
+  concurrencyPolicy: {{ .Values.concurrencyPolicy }}
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: reencoder
+        spec:
+          restartPolicy: Never
+          {{- with .Values.node }}
+          nodeSelector:
+            kubernetes.io/hostname: {{ . }}
+          {{- end }}
+          {{- with .Values.gpu.runtimeClassName }}
+          runtimeClassName: {{ . }}
+          {{- end }}
+          securityContext:
+            runAsUser: {{ .Values.puid }}
+            runAsGroup: {{ .Values.pgid }}
+            fsGroup: {{ .Values.pgid }}
+          containers:
+            - name: reencoder
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              command: ["/bin/sh", "/script/reencode.sh"]
+              env:
+                - { name: MEDIA_PATH,  value: {{ .Values.storage.mediaPath | quote }} }
+                - { name: TRASH_DIR,   value: {{ .Values.storage.trashDir | quote }} }
+                - { name: CODEC,       value: {{ .Values.encode.codec | quote }} }
+                - { name: CRF,         value: {{ .Values.encode.crf | quote }} }
+                - { name: PRESET,      value: {{ .Values.encode.preset | quote }} }
+                - { name: PIXFMT,      value: {{ .Values.encode.pixfmt | quote }} }
+                - { name: MAX_FILES,   value: {{ .Values.select.maxFiles | quote }} }
+                - { name: MIN_SIZE_MB, value: {{ .Values.select.minSizeMb | quote }} }
+                - { name: SKIP_HDR,    value: {{ .Values.select.skipHdr | quote }} }
+                - { name: SKIP_4K,     value: {{ .Values.select.skip4k | quote }} }
+                - { name: GPU_ENABLED, value: {{ ternary "1" "0" .Values.gpu.enabled | quote }} }
+                - { name: GPU_VENDOR,  value: {{ .Values.gpu.vendor | quote }} }
+              volumeMounts:
+                - { name: data,   mountPath: /data }
+                - { name: script, mountPath: /script, readOnly: true }
+              resources:
+                requests:
+                  {{- toYaml .Values.resources.requests | nindent 18 }}
+                limits:
+                  {{- toYaml .Values.resources.limits | nindent 18 }}
+                  {{- if .Values.gpu.enabled }}
+                  {{ .Values.gpu.resourceName }}: 1
+                  {{- end }}
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: {{ .Values.storage.dataClaim }}
+            - name: script
+              configMap:
+                name: reencoder-script
+                defaultMode: 0755
