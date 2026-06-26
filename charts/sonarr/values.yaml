@@ -1,0 +1,42 @@
+image:
+  repository: docker.io/linuxserver/sonarr
+  tag: latest
+  pullPolicy: Always
+
+port: 8989
+puid: 1000
+pgid: 1000
+tz: America/Denver
+
+# sonarr needs the data volume so it can hardlink imports from /data/torrents
+# into /data/media/tv.
+storage:
+  configClaim: mediaserver-config
+  dataClaim: mediaserver-data
+  mountData: true
+
+service:
+  type: ClusterIP
+  port: 8989
+
+probe:
+  path: /sonarr/ping
+
+initConfig:
+  enabled: true
+
+ingress:
+  enabled: true
+  className: nginx
+  host: media.thereedfamily.rocks
+  path: /sonarr
+  tls:
+    enabled: true
+    secretName: sonarr-tls
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    nginx.ingress.kubernetes.io/backend-protocol: HTTP
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+
+nodeSelector: {}
+resources: {}

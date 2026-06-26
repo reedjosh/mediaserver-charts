@@ -1,0 +1,29 @@
+apiVersion: v2
+name: mediaserver
+description: >-
+  Umbrella chart that deploys the full media stack (jellyfin, radarr, sonarr,
+  prowlarr, transmission) and owns the shared config + data PVCs.
+type: application
+version: 0.1.0
+appVersion: "latest"
+dependencies:
+  - name: jellyfin
+    version: 0.1.0
+    repository: file://../jellyfin
+    condition: jellyfin.enabled
+  - name: radarr
+    version: 0.1.0
+    repository: file://../radarr
+    condition: radarr.enabled
+  - name: sonarr
+    version: 0.1.0
+    repository: file://../sonarr
+    condition: sonarr.enabled
+  - name: prowlarr
+    version: 0.1.0
+    repository: file://../prowlarr
+    condition: prowlarr.enabled
+  - name: transmission
+    version: 0.1.0
+    repository: file://../transmission
+    condition: transmission.enabled

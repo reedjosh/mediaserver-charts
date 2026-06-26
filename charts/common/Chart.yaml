@@ -1,0 +1,7 @@
+apiVersion: v2
+name: common
+description: >-
+  Library chart with shared helpers and storage wiring for the mediaserver
+  app charts (jellyfin, radarr, sonarr, prowlarr, transmission).
+type: library
+version: 0.1.0

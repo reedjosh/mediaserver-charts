@@ -1,0 +1,23 @@
+# Shared storage owned by this umbrella chart.
+storage:
+  create: true
+  className: nfs-kubedata
+  configClaim: mediaserver-config
+  configSize: 50Gi
+  dataClaim: mediaserver-data
+  dataSize: 4Ti          # advisory only (nfs-subdir provisioner ignores it)
+
+# Each app is its own subchart; flip enabled to deploy/remove it.
+# App-level defaults (images, ports, ingress hosts) live in each subchart's
+# values.yaml and already match the cluster - override here only as needed.
+jellyfin:
+  enabled: true
+radarr:
+  enabled: true
+sonarr:
+  enabled: true
+prowlarr:
+  enabled: true
+transmission:
+  enabled: true
+  # vpn keys are NOT set here - create the transmission-vpn Secret out of band.

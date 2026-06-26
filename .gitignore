@@ -1,0 +1,9 @@
+# Helm dependency build artifacts
+charts/*/charts/
+charts/*/Chart.lock
+*.tgz
+
+# Local value overrides that may carry secrets
+*.local.yaml
+my-values*.yaml
+secrets*.yaml

@@ -1,0 +1,63 @@
+image:
+  repository: docker.io/linuxserver/transmission
+  tag: latest
+  pullPolicy: Always
+
+puid: 1000
+pgid: 1000
+tz: America/Denver
+
+# transmission saves to /data/torrents on the shared data volume so the *arr
+# apps can hardlink completed downloads into /data/media/* (no duplicate copies).
+storage:
+  configClaim: mediaserver-config
+  dataClaim: mediaserver-data
+  mountData: true
+
+ports:
+  rpc: 9091
+  peer: 51413
+
+service:
+  type: ClusterIP
+  port: 9091
+
+probe:
+  path: /transmission/
+
+# transmission serves its own /transmission RPC path; no UrlBase seeding needed.
+initConfig:
+  enabled: false
+
+ingress:
+  enabled: true
+  className: nginx
+  host: media.thereedfamily.rocks
+  path: /transmission
+  tls:
+    enabled: true
+    secretName: transmission-tls
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    nginx.ingress.kubernetes.io/backend-protocol: HTTP
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+
+# WireGuard VPN sidecar (gluetun). All values here are NON-secret.
+# The private key must live in a Secret (vpn.existingSecret) that is NOT committed:
+#   kubectl -n mediaserver create secret generic transmission-vpn \
+#     --from-literal=WIREGUARD_PRIVATE_KEY=xxxxxxxx
+vpn:
+  enabled: true
+  image: qmcgaw/gluetun
+  serviceProvider: custom
+  type: wireguard
+  endpointIP: ""        # set in a local override, not in git
+  endpointPort: 51820
+  publicKey: ""         # set in a local override, not in git
+  addresses: ""         # e.g. 10.13.128.x/24
+  dnsKeepNameserver: "on"
+  firewallOutboundSubnets: ""   # cluster service CIDR if transmission must reach in-cluster services
+  existingSecret: transmission-vpn
+
+nodeSelector: {}
+resources: {}

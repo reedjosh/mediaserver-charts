@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    {{- include "mediaserver.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "mediaserver.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "mediaserver.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        {{- if .Values.vpn.enabled }}
+        # gluetun owns the pod network namespace and kill-switches all traffic
+        # through the VPN; transmission (same netns) inherits the tunnel.
+        - name: vpn
+          image: {{ .Values.vpn.image }}
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["NET_ADMIN"]
+          env:
+            - { name: VPN_SERVICE_PROVIDER, value: {{ .Values.vpn.serviceProvider | quote }} }
+            - { name: VPN_TYPE,             value: {{ .Values.vpn.type | quote }} }
+            - { name: WIREGUARD_ENDPOINT_IP,   value: {{ .Values.vpn.endpointIP | quote }} }
+            - { name: WIREGUARD_ENDPOINT_PORT, value: {{ .Values.vpn.endpointPort | quote }} }
+            - { name: WIREGUARD_PUBLIC_KEY,    value: {{ .Values.vpn.publicKey | quote }} }
+            - { name: WIREGUARD_ADDRESSES,     value: {{ .Values.vpn.addresses | quote }} }
+            - { name: DNS_KEEP_NAMESERVER,     value: {{ .Values.vpn.dnsKeepNameserver | quote }} }
+            - { name: FIREWALL_OUTBOUND_SUBNETS, value: {{ .Values.vpn.firewallOutboundSubnets | quote }} }
+          envFrom:
+            # Must provide WIREGUARD_PRIVATE_KEY (kept out of git).
+            - secretRef:
+                name: {{ .Values.vpn.existingSecret }}
+        {{- end }}
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Chart.Name }}-env
+          ports:
+            - name: http
+              containerPort: {{ .Values.ports.rpc }}
+              protocol: TCP
+            - name: peer-tcp
+              containerPort: {{ .Values.ports.peer }}
+              protocol: TCP
+            - name: peer-udp
+              containerPort: {{ .Values.ports.peer }}
+              protocol: UDP
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probe.path }}
+              port: {{ .Values.ports.rpc }}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 20
+          volumeMounts:
+            {{- include "mediaserver.storageMounts" . | nindent 12 }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        {{- include "mediaserver.storageVolumes" . | nindent 8 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

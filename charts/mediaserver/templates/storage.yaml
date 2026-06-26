@@ -1,0 +1,35 @@
+{{- if .Values.storage.create }}
+{{- /* Shared config PVC: small, precious app state (one subdir per app). */}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.storage.configClaim }}
+  labels:
+    app.kubernetes.io/part-of: mediaserver
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: {{ .Values.storage.className | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.configSize }}
+---
+{{- /*
+  Shared data PVC: media + torrents under one mount so the *arr apps hardlink
+  imports. Size is advisory only - the nfs-subdir provisioner does not enforce
+  it. Enforce real headroom with an XFS project quota on the NFS host instead.
+*/}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.storage.dataClaim }}
+  labels:
+    app.kubernetes.io/part-of: mediaserver
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: {{ .Values.storage.className | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.dataSize }}
+{{- end }}

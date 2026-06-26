@@ -1,0 +1,44 @@
+image:
+  repository: docker.io/linuxserver/jellyfin
+  tag: latest
+  pullPolicy: Always
+
+port: 8096
+puid: 1000
+pgid: 1000
+tz: America/Denver
+
+# jellyfin reads the library from the data volume (/data/media/{movies,tv}).
+storage:
+  configClaim: mediaserver-config
+  dataClaim: mediaserver-data
+  mountData: true
+
+service:
+  type: ClusterIP
+  port: 8096
+
+probe:
+  path: /health
+
+# Served at the host root (own subdomain), so no UrlBase seeding needed.
+initConfig:
+  enabled: false
+
+ingress:
+  enabled: true
+  className: nginx
+  host: jelly.thereedfamily.rocks
+  path: /
+  tls:
+    enabled: true
+    secretName: jelly-tls
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    nginx.ingress.kubernetes.io/backend-protocol: HTTP
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/use-http2: "false"
+
+nodeSelector: {}
+resources: {}
