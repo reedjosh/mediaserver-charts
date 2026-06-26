@@ -27,8 +27,9 @@ charts/
 ## Library re-encoder
 
 `reencoder` is a `CronJob` that periodically finds oversized legacy (x264) files
-and transcodes them to **HEVC** (default; `encode.codec: av1` to switch) to
-reclaim space. It's **idempotent** (already-HEVC/AV1 files are skipped), processes
+and transcodes them to **AV1** (default; `encode.codec: hevc` to switch) to
+reclaim space. Since the source is x264, this is a single clean lossy generation.
+It's **idempotent** (already-HEVC/AV1 files are skipped), processes
 a **bounded batch** per run, **skips HDR/4K** by default, and **never hard-deletes**
 — originals are parked in `/data/.reencode-trash` for review. CPU software encode
 out of the box; set `gpu.enabled: true` (+ a GPU-capable ffmpeg image) for NVENC/VAAPI.
