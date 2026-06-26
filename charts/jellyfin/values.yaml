@@ -40,5 +40,8 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-buffering: "off"
     nginx.ingress.kubernetes.io/use-http2: "false"
 
-nodeSelector: {}
+# Co-locate jellyfin on the node that hosts the data volume (.227) so library
+# reads are node-local instead of crossing the network via NFS from another node.
+nodeSelector:
+  kubernetes.io/hostname: jayrdl3803
 resources: {}
