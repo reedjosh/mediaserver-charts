@@ -38,6 +38,7 @@ spec:
               env:
                 - { name: MEDIA_PATH,  value: {{ .Values.storage.mediaPath | quote }} }
                 - { name: TRASH_DIR,   value: {{ .Values.storage.trashDir | quote }} }
+                - { name: TRASH_KEEP_DAYS, value: {{ .Values.storage.trashKeepDays | quote }} }
                 - { name: CODEC,       value: {{ .Values.encode.codec | quote }} }
                 - { name: CRF,         value: {{ .Values.encode.crf | quote }} }
                 - { name: PRESET,      value: {{ .Values.encode.preset | quote }} }

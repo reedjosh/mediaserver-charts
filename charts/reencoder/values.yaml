@@ -17,7 +17,8 @@ image:
 storage:
   dataClaim: mediaserver-data
   mediaPath: /data/media        # where the library lives inside the volume
-  trashDir: /data/.reencode-trash  # originals parked here (not deleted) for review
+  trashDir: /data/.reencode-trash  # originals parked here for review
+  trashKeepDays: "7"            # auto-purge trashed originals older than this each run
 
 puid: 1000
 pgid: 1000

@@ -12,6 +12,13 @@ data:
     TRASH="$TRASH_DIR"
     mkdir -p "$TRASH"
 
+    # Purge re-encode trash older than the retention window (mtime is stamped
+    # when a file is moved into trash, so this is "days since trashed").
+    KEEP="${TRASH_KEEP_DAYS:-7}"
+    echo "purging trash older than ${KEEP}d from $TRASH"
+    find "$TRASH" -type f -mtime +"$KEEP" -delete 2>/dev/null
+    find "$TRASH" -type d -empty -delete 2>/dev/null
+
     # Pick the encoder: hardware (NVENC/VAAPI) if GPU enabled, else software.
     if [ "${GPU_ENABLED:-0}" = "1" ]; then
       if [ "$GPU_VENDOR" = "intel" ]; then
@@ -58,6 +65,7 @@ data:
           rel="${f#$ROOT/}"
           mkdir -p "$TRASH/$(dirname "$rel")"
           mv "$f" "$TRASH/$rel"
+          touch "$TRASH/$rel"          # stamp trash time for the retention purge
           mv "$out" "${f%.*}.mkv"
           newsz=$(stat -c %s "${f%.*}.mkv" 2>/dev/null || echo 0)
           echo "   ok: $((sz/1024/1024))MB -> $((newsz/1024/1024))MB (original parked in trash)"
