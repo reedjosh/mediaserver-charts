@@ -13,7 +13,8 @@ config:
   removeFailed: true
   removeStalled: true          # no-progress / dead torrents
   removeMetadataMissing: true  # stuck fetching metadata
-  removeOrphans: false         # safety: leave untracked downloads alone
+  removeOrphans: true          # removes *arr-queue downloads whose movie/series was deleted
+                               # (does NOT touch non-*arr torrents like checkmyiptorrent)
   # remove_slow intentionally OFF -> never kills a slow-but-progressing download
 
 radarr:
