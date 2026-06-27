@@ -40,7 +40,7 @@ Pod volumes for the shared NFS storage.
 - name: config
   persistentVolumeClaim:
     claimName: {{ .Values.storage.configClaim }}
-{{- if .Values.storage.mountData }}
+{{- if or .Values.storage.mountData .Values.storage.mediaMounts }}
 - name: data
   persistentVolumeClaim:
     claimName: {{ .Values.storage.dataClaim }}
@@ -58,5 +58,10 @@ config is sub-pathed per app; data is a single mount (no subPath) on purpose.
 {{- if .Values.storage.mountData }}
 - name: data
   mountPath: /data
+{{- end }}
+{{- range .Values.storage.mediaMounts }}
+- name: data
+  mountPath: {{ .path }}
+  subPath: {{ .subPath }}
 {{- end }}
 {{- end -}}

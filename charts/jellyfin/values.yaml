@@ -8,11 +8,16 @@ puid: 1000
 pgid: 1000
 tz: America/Denver
 
-# jellyfin reads the library from the data volume (/data/media/{movies,tv}).
+# jellyfin only READS the library (it never hardlinks), so it doesn't need the
+# single /data mount. Mounting the media as /movies + /tv subPaths matches the
+# library paths jellyfin already has configured - no reconfig, no rescan.
 storage:
   configClaim: mediaserver-config
   dataClaim: mediaserver-data
-  mountData: true
+  mountData: false
+  mediaMounts:
+    - { path: /movies, subPath: media/movies }
+    - { path: /tv,     subPath: media/tv }
 
 service:
   type: ClusterIP
