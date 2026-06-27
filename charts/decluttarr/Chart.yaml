@@ -1,0 +1,6 @@
+apiVersion: v2
+name: decluttarr
+description: Watches radarr/sonarr queues and removes dead/stalled downloads, triggering a re-grab.
+type: application
+version: 0.1.0
+appVersion: "2.1.0"

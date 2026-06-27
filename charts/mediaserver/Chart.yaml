@@ -31,3 +31,7 @@ dependencies:
     version: 0.1.0
     repository: file://../reencoder
     condition: reencoder.enabled
+  - name: decluttarr
+    version: 0.1.0
+    repository: file://../decluttarr
+    condition: decluttarr.enabled

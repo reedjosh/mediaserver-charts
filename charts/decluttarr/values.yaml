@@ -1,0 +1,22 @@
+image:
+  repository: ghcr.io/manimatter/decluttarr
+  tag: v2.1.0          # pinned (not :latest) so behavior can't shift under you
+  pullPolicy: IfNotPresent
+
+existingSecret: decluttarr-secrets   # must contain RADARR_API_KEY + SONARR_API_KEY
+
+config:
+  timer: 10            # check queues every 10 min
+  testRun: false       # live (verified in dry-run first); set true to dry-run again
+  logLevel: INFO       # set to DEBUG to troubleshoot
+  maxStrikes: 6        # ~6 bad checks (~1h) before removing - lenient, survives transient stalls
+  removeFailed: true
+  removeStalled: true          # no-progress / dead torrents
+  removeMetadataMissing: true  # stuck fetching metadata
+  removeOrphans: false         # safety: leave untracked downloads alone
+  # remove_slow intentionally OFF -> never kills a slow-but-progressing download
+
+radarr:
+  baseUrl: http://radarr.mediaserver:7878/radarr
+sonarr:
+  baseUrl: http://sonarr.mediaserver:8989/sonarr

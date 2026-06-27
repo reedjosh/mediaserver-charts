@@ -17,5 +17,8 @@ dependencies:
 - name: reencoder
   repository: file://../reencoder
   version: 0.1.0
-digest: sha256:048b347b85014c194a38d3a98b758963946afcf6626642542720a48b5b55bee9
-generated: "2026-06-26T18:33:51.445715532-05:00"
+- name: decluttarr
+  repository: file://../decluttarr
+  version: 0.1.0
+digest: sha256:758445ac009e26c484bc5d1e1dc3f91d5fd39b744bb0ebe84df83ad36f298e61
+generated: "2026-06-26T23:30:54.102685403-05:00"

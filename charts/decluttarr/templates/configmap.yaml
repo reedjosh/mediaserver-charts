@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: decluttarr-config
+data:
+  config.yaml: |
+    general:
+      timer: {{ .Values.config.timer }}
+      test_run: {{ .Values.config.testRun }}
+      log_level: {{ .Values.config.logLevel | default "INFO" }}
+    job_defaults:
+      max_strikes: {{ .Values.config.maxStrikes }}
+    jobs:
+      {{- if .Values.config.removeFailed }}
+      remove_failed_downloads:
+      {{- end }}
+      {{- if .Values.config.removeStalled }}
+      remove_stalled:
+      {{- end }}
+      {{- if .Values.config.removeMetadataMissing }}
+      remove_metadata_missing:
+      {{- end }}
+      {{- if .Values.config.removeOrphans }}
+      remove_orphans:
+      {{- end }}
+    instances:
+      radarr:
+        - base_url: "{{ .Values.radarr.baseUrl }}"
+          api_key: "RADARR_API_KEY_PLACEHOLDER"
+      sonarr:
+        - base_url: "{{ .Values.sonarr.baseUrl }}"
+          api_key: "SONARR_API_KEY_PLACEHOLDER"

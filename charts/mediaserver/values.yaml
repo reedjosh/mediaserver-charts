@@ -27,3 +27,8 @@ transmission:
 # after the GPU is in (set reencoder.gpu.enabled there too).
 reencoder:
   enabled: false
+
+# Queue janitor: removes dead/stalled downloads and triggers a re-grab.
+# Needs the decluttarr-secrets Secret (RADARR_API_KEY + SONARR_API_KEY).
+decluttarr:
+  enabled: true
