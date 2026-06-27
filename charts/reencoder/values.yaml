@@ -32,9 +32,9 @@ encode:
 
 select:
   maxFiles: "20"        # cap files per run so a night's work is bounded
-  minSizeMb: "3000"     # only bother with files larger than this
-  skipHdr: "1"          # 1 = leave HDR alone (re-encoding HDR safely is fiddly)
-  skip4k: "1"           # 1 = leave 2160p alone for now (focus on bloated 1080p)
+  minSizeMb: "0"        # no size floor - re-encode x264 of any size
+  skipHdr: "1"          # KEEP: naive re-encode strips HDR10/loses Dolby Vision
+  skip4k: "0"           # process 4K too (stays 4K, just re-encoded to HEVC)
 
 # GPU hardware encode (off until the card arrives). When enabled, the script
 # uses hevc_nvenc/av1_nvenc and requests the GPU resource below.
