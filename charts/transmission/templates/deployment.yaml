@@ -35,6 +35,10 @@ spec:
             - { name: WIREGUARD_ADDRESSES,     value: {{ .Values.vpn.addresses | quote }} }
             - { name: DNS_KEEP_NAMESERVER,     value: {{ .Values.vpn.dnsKeepNameserver | quote }} }
             - { name: FIREWALL_OUTBOUND_SUBNETS, value: {{ .Values.vpn.firewallOutboundSubnets | quote }} }
+            {{- with .Values.vpn.inputPorts }}
+            # opens the VPN-forwarded peer port inbound so transmission can seed
+            - { name: FIREWALL_VPN_INPUT_PORTS, value: {{ . | quote }} }
+            {{- end }}
           envFrom:
             # Must provide WIREGUARD_PRIVATE_KEY (kept out of git).
             - secretRef:

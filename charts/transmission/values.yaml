@@ -16,7 +16,7 @@ storage:
 
 ports:
   rpc: 9091
-  peer: 51413
+  peer: 51517          # must match the VPN-forwarded port + transmission's peer-port
 
 service:
   type: ClusterIP
@@ -57,6 +57,7 @@ vpn:
   addresses: ""         # e.g. 10.13.128.x/24
   dnsKeepNameserver: "on"
   firewallOutboundSubnets: ""   # cluster service CIDR if transmission must reach in-cluster services
+  inputPorts: "51517"           # VPN-forwarded port opened inbound for seeding (empty = none)
   existingSecret: transmission-vpn
 
 nodeSelector: {}
