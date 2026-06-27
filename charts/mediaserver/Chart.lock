@@ -1,0 +1,21 @@
+dependencies:
+- name: jellyfin
+  repository: file://../jellyfin
+  version: 0.1.0
+- name: radarr
+  repository: file://../radarr
+  version: 0.1.0
+- name: sonarr
+  repository: file://../sonarr
+  version: 0.1.0
+- name: prowlarr
+  repository: file://../prowlarr
+  version: 0.1.0
+- name: transmission
+  repository: file://../transmission
+  version: 0.1.0
+- name: reencoder
+  repository: file://../reencoder
+  version: 0.1.0
+digest: sha256:048b347b85014c194a38d3a98b758963946afcf6626642542720a48b5b55bee9
+generated: "2026-06-26T18:33:51.445715532-05:00"
