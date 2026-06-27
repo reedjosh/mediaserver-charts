@@ -43,13 +43,15 @@ data:
       sz=$(stat -c %s "$f" 2>/dev/null || echo 0)
       [ "$sz" -lt $(( MIN_SIZE_MB * 1024 * 1024 )) ] && continue
 
-      vc=$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 "$f" 2>/dev/null)
+      # head -1 + strip whitespace: guard against multi-stream output / stray CR-LF
+      # that previously broke the skip checks (re-encoded an HEVC HDR file by mistake)
+      vc=$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 "$f" 2>/dev/null | head -1 | tr -d '[:space:]')
       case "$vc" in hevc|av1|"") continue ;; esac        # already efficient (or unreadable)
 
-      h=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 "$f" 2>/dev/null)
+      h=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 "$f" 2>/dev/null | head -1 | tr -d '[:space:]')
       [ "$SKIP_4K" = "1" ] && [ "${h:-0}" -gt 1100 ] && continue
 
-      ct=$(ffprobe -v error -select_streams v:0 -show_entries stream=color_transfer -of csv=p=0 "$f" 2>/dev/null)
+      ct=$(ffprobe -v error -select_streams v:0 -show_entries stream=color_transfer -of csv=p=0 "$f" 2>/dev/null | head -1 | tr -d '[:space:]')
       if [ "$SKIP_HDR" = "1" ]; then
         case "$ct" in smpte2084|arib-std-b67) continue ;; esac
       fi

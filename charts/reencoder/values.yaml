@@ -24,9 +24,10 @@ puid: 1000
 pgid: 1000
 
 encode:
-  codec: av1            # av1 | hevc  (AV1 = smallest; source is x264 so this is a single clean generation)
-  crf: "28"             # svt-av1/av1_nvenc ~26-32 (≈ x265 crf 20); lower = higher quality/larger
-  preset: "6"           # svt-av1 preset 1-12 (CPU path only); av1_nvenc uses -cq and ignores this
+  codec: hevc           # hevc | av1. HEVC: direct-plays on the Shield (Tegra X1 has NO AV1 decode)
+                        # and most clients; AV1's compression edge isn't worth the transcode hit.
+  crf: "20"             # x265 ~20-22 (lower = higher quality/larger)
+  preset: slow          # x265 preset (medium/slow); av1 path would use a number
   pixfmt: yuv420p10le   # 10-bit even from 8-bit source (better compression, less banding)
 
 select:
