@@ -1,0 +1,27 @@
+# Node-local storage provisioner (Rancher local-path). Gives vmstorage real HA:
+# each replica's PV is pinned to its own node's SSD instead of all landing on the
+# .227 NFS server. Apply with: kubectl apply -f storage.application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: storage
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: local-path-storage
+  source:
+    repoURL: https://github.com/reedjosh/mediaserver-charts
+    targetRevision: main
+    path: cluster/storage
+    directory:
+      recurse: false
+      include: '{local-path-provisioner.yaml}'
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true
