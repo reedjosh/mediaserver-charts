@@ -13,3 +13,6 @@ spec:
   podMetricsEndpoints:
     - port: http-metrics
       interval: 30s
+      # keep the metric's own namespace/name labels (cert namespace, issuer, etc.)
+      # instead of overwriting `namespace` with the cert-manager pod's namespace
+      honorLabels: true

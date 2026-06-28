@@ -13,3 +13,5 @@ spec:
   endpoints:
     - port: metrics
       interval: 30s
+      # keep the ingress object's own namespace/ingress labels
+      honorLabels: true
