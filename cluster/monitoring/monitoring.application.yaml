@@ -1,0 +1,27 @@
+# Declarative monitoring extras: Grafana dashboards (ConfigMaps the sidecar loads),
+# extra scrape configs, and custom alert rules — everything under cluster/monitoring/.
+# Apply with: kubectl apply -f monitoring.application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-extras
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  source:
+    repoURL: https://github.com/reedjosh/mediaserver-charts
+    targetRevision: main
+    path: cluster/monitoring
+    directory:
+      recurse: true
+      include: '{dashboards/*,scrapes/*,rules/*}'
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true        # dashboard ConfigMaps are large
+      - ApplyOutOfSyncOnly=true

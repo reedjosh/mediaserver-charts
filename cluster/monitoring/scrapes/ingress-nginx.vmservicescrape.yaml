@@ -1,0 +1,15 @@
+# Scrape the ingress-nginx controller metrics endpoint (:10254).
+# VMAgent has selectAllByDefault=true, so this is picked up automatically.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: ingress-nginx
+  namespace: ingress-nginx
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingress-nginx
+      app.kubernetes.io/component: controller
+  endpoints:
+    - port: metrics
+      interval: 30s
