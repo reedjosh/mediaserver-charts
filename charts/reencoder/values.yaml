@@ -49,5 +49,5 @@ gpu:
   runtimeClassName: ""           # e.g. "nvidia" if your node uses a runtime class
 
 resources:
-  requests: { cpu: "2", memory: 2Gi }
-  limits:   { cpu: "16", memory: 8Gi }   # cap so it can't starve streaming
+  requests: { cpu: "2", memory: 2Gi }    # low request -> yields to Jellyfin under contention
+  limits:   { cpu: "54", memory: 16Gi }  # burst x265 up to 54 threads (3/4 of the 72 on .227)
