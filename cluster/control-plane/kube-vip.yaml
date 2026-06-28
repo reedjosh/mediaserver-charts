@@ -63,7 +63,10 @@ spec:
   hostNetwork: true
   volumes:
   - hostPath:
-      path: /etc/kubernetes/admin.conf
+      # Per-node kubeconfig pointing at THIS node's own apiserver (not the VIP), so
+      # each kube-vip can bootstrap the VIP independently on a cold boot — no single
+      # anchor node. Create on each CP node: sed admin.conf server -> the node's own IP.
+      path: /etc/kubernetes/kube-vip.conf
     name: kubeconfig
 status: {}
 
