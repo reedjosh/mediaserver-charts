@@ -1,0 +1,23 @@
+# Allow vmagent's ServiceAccount to read the protected /metrics endpoints on
+# kube-scheduler (:10259) and kube-controller-manager (:10257), which require
+# authn+authz (they return 403 to unauthorized callers).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vmagent-metrics-reader
+rules:
+  - nonResourceURLs: ["/metrics", "/metrics/slis"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vmagent-metrics-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vmagent-metrics-reader
+subjects:
+  - kind: ServiceAccount
+    name: vmagent-vm
+    namespace: monitoring
