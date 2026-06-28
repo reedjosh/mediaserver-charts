@@ -1,0 +1,15 @@
+# Scrape the cert-manager controller metrics (http-metrics 9402): cert expiry,
+# issuance, ACME order status.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: cert-manager
+  namespace: cert-manager
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cert-manager
+      app.kubernetes.io/component: controller
+  podMetricsEndpoints:
+    - port: http-metrics
+      interval: 30s

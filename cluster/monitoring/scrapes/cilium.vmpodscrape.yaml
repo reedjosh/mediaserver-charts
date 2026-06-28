@@ -1,0 +1,30 @@
+# Scrape Cilium agent (prometheus 9962 + hubble-metrics 9965) and operator (9963).
+# No metrics Services exist (serviceMonitor disabled), so scrape the pods directly.
+# VMAgent selectAllByDefault=true picks these up.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: cilium-agent
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      k8s-app: cilium
+  podMetricsEndpoints:
+    - port: prometheus
+      interval: 30s
+    - port: hubble-metrics
+      interval: 30s
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: cilium-operator
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      io.cilium/app: operator
+  podMetricsEndpoints:
+    - port: prometheus
+      interval: 30s
