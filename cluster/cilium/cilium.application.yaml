@@ -1,0 +1,51 @@
+# Cilium CNI (eBPF, native routing, kube-proxy replacement, BGP, Maglev+SNAT).
+# Adopts the bootstrap `helm install cilium` release into ArgoCD.
+# Apply with: kubectl apply -f cilium.application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cilium
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  source:
+    repoURL: https://helm.cilium.io
+    chart: cilium
+    targetRevision: 1.19.5
+    helm:
+      valuesObject:
+        ipam:
+          mode: cluster-pool
+          operator:
+            clusterPoolIPv4PodCIDRList: ["10.244.0.0/16"]
+            clusterPoolIPv4MaskSize: 24
+        kubeProxyReplacement: true
+        k8sServiceHost: 192.168.50.225
+        k8sServicePort: 6443
+        routingMode: native
+        ipv4NativeRoutingCIDR: 10.244.0.0/16
+        autoDirectNodeRoutes: true
+        enableIPv4Masquerade: true
+        bgpControlPlane:
+          enabled: true
+        # Maglev consistent hashing. SNAT (not DSR): replies must return THROUGH
+        # pfSense for the NAT/port-forward + hairpin path to work (DSR breaks it).
+        loadBalancer:
+          algorithm: maglev
+          mode: snat
+        maglev:
+          tableSize: 16381
+        operator:
+          replicas: 2
+        hubble:
+          relay:
+            enabled: true
+          ui:
+            enabled: true
+  syncPolicy:
+    syncOptions:
+      - ServerSideApply=true   # cilium ships large CRDs
+  # NOTE: automated sync intentionally omitted until the adoption sync is verified.

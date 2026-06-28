@@ -1,0 +1,55 @@
+# Cilium LB-IPAM + BGP (apply AFTER cilium is up and nodes are Ready).
+# NOTE: verify API group on 1.19 first:  kubectl api-resources | grep -i 'bgp\|loadbalancerippool'
+#   (graduated to cilium.io/v2; if your build still exposes v2alpha1, swap the apiVersion.)
+---
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: bgp-pool
+spec:
+  blocks:
+    - cidr: 192.168.60.0/24
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPClusterConfig
+metadata:
+  name: cluster-bgp
+spec:
+  nodeSelector:
+    matchLabels: {}            # all nodes peer
+  bgpInstances:
+    - name: instance-64512
+      localASN: 64512
+      peers:
+        - name: pfsense
+          peerASN: 64513
+          peerAddress: 192.168.50.1
+          peerConfigRef:
+            name: pfsense-peer
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPPeerConfig
+metadata:
+  name: pfsense-peer
+spec:
+  families:
+    - afi: ipv4
+      safi: unicast
+      advertisements:
+        matchLabels:
+          advertise: bgp
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPAdvertisement
+metadata:
+  name: lb-services
+  labels:
+    advertise: bgp
+spec:
+  advertisements:
+    - advertisementType: Service
+      service:
+        addresses:
+          - LoadBalancerIP
+      selector:
+        matchLabels: {}        # empty selector = all services; only LB-typed ones have an IP to advertise

@@ -1,0 +1,23 @@
+# Cilium BGP control-plane config + LB-IPAM pool (the CRs the helm chart doesn't ship).
+# Peers with pfSense (FRR) AS 64513; advertises LB pool 192.168.60.0/24; Maglev/ECMP.
+# Apply with: kubectl apply -f bgp.application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cilium-bgp
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  source:
+    repoURL: https://github.com/reedjosh/mediaserver-charts
+    targetRevision: main
+    path: cluster/cilium/bgp
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
