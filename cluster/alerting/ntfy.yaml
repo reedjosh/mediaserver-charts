@@ -1,0 +1,94 @@
+# ntfy — self-hosted push notifications. Alertmanager (via the alertmanager-ntfy
+# bridge) publishes to the `homelab-alerts` topic; subscribe on your phone.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ntfy-data
+  namespace: monitoring
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ntfy-config
+  namespace: monitoring
+data:
+  server.yml: |
+    base-url: "https://ntfy.thereedfamily.rocks"
+    listen-http: ":80"
+    behind-proxy: true
+    cache-file: "/var/lib/ntfy/cache.db"
+    cache-duration: "48h"
+    auth-file: "/var/lib/ntfy/user.db"
+    auth-default-access: "deny-all"
+    enable-login: true
+    attachment-cache-dir: "/var/lib/ntfy/attachments"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ntfy
+  namespace: monitoring
+  labels: { app: ntfy }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }       # single SQLite writer on the RWO volume
+  selector: { matchLabels: { app: ntfy } }
+  template:
+    metadata: { labels: { app: ntfy } }
+    spec:
+      containers:
+        - name: ntfy
+          image: binwiederhier/ntfy:v2.11.0
+          args: ["serve"]
+          ports: [{ containerPort: 80, name: http }]
+          volumeMounts:
+            - { name: config, mountPath: /etc/ntfy }
+            - { name: data, mountPath: /var/lib/ntfy }
+          livenessProbe:
+            httpGet: { path: /v1/health, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests: { cpu: "10m", memory: 32Mi }
+            limits:   { memory: 128Mi }
+      volumes:
+        - { name: config, configMap: { name: ntfy-config } }
+        - { name: data, persistentVolumeClaim: { claimName: ntfy-data } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ntfy
+  namespace: monitoring
+spec:
+  selector: { app: ntfy }
+  ports: [{ port: 80, targetPort: http, name: http }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ntfy
+  namespace: monitoring
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: ["ntfy.thereedfamily.rocks"]
+      secretName: ntfy-tls
+  rules:
+    - host: ntfy.thereedfamily.rocks
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ntfy
+                port: { name: http }

@@ -1,0 +1,72 @@
+# Homelab-specific alerts (the VM-stack baseline covers generic k8s/node/etcd).
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: homelab-alerts
+  namespace: monitoring
+spec:
+  groups:
+    - name: homelab.storage
+      rules:
+        - alert: NFSVolumeHigh
+          expr: 100 * (1 - node_filesystem_avail_bytes{mountpoint=~"/data/k8s|/srv/nfs/kubedata"} / node_filesystem_size_bytes{mountpoint=~"/data/k8s|/srv/nfs/kubedata"}) > 85
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: 'NFS {{ $labels.mountpoint }} on {{ $labels.instance }} is filling up'
+            description: '{{ $labels.mountpoint }} on {{ $labels.instance }} is {{ $value | printf "%.0f" }}% full (threshold 85%).'
+        - alert: NFSVolumeCritical
+          expr: 100 * (1 - node_filesystem_avail_bytes{mountpoint=~"/data/k8s|/srv/nfs/kubedata"} / node_filesystem_size_bytes{mountpoint=~"/data/k8s|/srv/nfs/kubedata"}) > 93
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: 'NFS {{ $labels.mountpoint }} almost full'
+            description: '{{ $labels.mountpoint }} on {{ $labels.instance }} is {{ $value | printf "%.0f" }}% full — config writes at risk.'
+        - alert: NodeRootFSHigh
+          expr: 100 * (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) > 85
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: 'Root filesystem on {{ $labels.instance }} is {{ $value | printf "%.0f" }}% full'
+            description: 'OS disk on {{ $labels.instance }} is running low (affects etcd, logs, images).'
+    - name: homelab.certs
+      rules:
+        - alert: CertExpiringSoon
+          expr: (certmanager_certificate_expiration_timestamp_seconds - time()) / 86400 < 14
+          for: 1h
+          labels: { severity: warning }
+          annotations:
+            summary: 'TLS cert {{ $labels.namespace }}/{{ $labels.name }} expires in {{ $value | printf "%.1f" }}d'
+            description: 'cert-manager cert {{ $labels.name }} ({{ $labels.namespace }}) expires soon — check the issuer/ACME order.'
+    - name: homelab.media
+      rules:
+        - alert: MediaAppDown
+          expr: kube_deployment_status_replicas_available{namespace="mediaserver"} < 1
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: 'Media app {{ $labels.deployment }} has no available replicas'
+            description: '{{ $labels.deployment }} in mediaserver has been down for 10m.'
+        - alert: PodCrashLoopingFast
+          expr: increase(kube_pod_container_status_restarts_total[15m]) > 5
+          for: 5m
+          labels: { severity: warning }
+          annotations:
+            summary: 'Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash-looping'
+            description: 'Container {{ $labels.container }} restarted >5x in 15m.'
+    - name: homelab.controlplane
+      rules:
+        - alert: EtcdNoLeader
+          expr: etcd_server_has_leader == 0
+          for: 1m
+          labels: { severity: critical }
+          annotations:
+            summary: 'etcd member {{ $labels.instance }} has no leader'
+            description: 'etcd quorum/leadership problem — control plane at risk.'
+        - alert: KubeVIPDown
+          expr: absent(up{job="kube-etcd-server"}) == 1
+          for: 5m
+          labels: { severity: warning }
+          annotations:
+            summary: 'Control-plane metrics scrape (etcd) absent'
+            description: 'No etcd targets are being scraped — control-plane monitoring may be broken.'

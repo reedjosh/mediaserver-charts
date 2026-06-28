@@ -1,0 +1,26 @@
+# ntfy (self-hosted push) + alertmanager-ntfy bridge. The ntfy token lives in the
+# out-of-band Secret `alertmanager-ntfy-auth` (NOT in git). Apply with:
+#   kubectl apply -f alerting.application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alerting
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  source:
+    repoURL: https://github.com/reedjosh/mediaserver-charts
+    targetRevision: main
+    path: cluster/alerting
+    directory:
+      recurse: false
+      include: '{ntfy.yaml,alertmanager-ntfy.yaml}'
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

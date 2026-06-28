@@ -1,0 +1,16 @@
+# etcd serves metrics on <node-ip>:2381 (http, unauthenticated) after adding the node IP
+# to --listen-metrics-urls. Static scrape of the 3 control-plane node IPs.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMStaticScrape
+metadata:
+  name: etcd
+  namespace: monitoring
+spec:
+  jobName: kube-etcd-server
+  targetEndpoints:
+    - targets:
+        - "192.168.50.225:2381"
+        - "192.168.50.226:2381"
+        - "192.168.50.227:2381"
+      scheme: http
+      interval: 30s
