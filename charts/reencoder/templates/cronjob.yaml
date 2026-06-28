@@ -12,7 +12,9 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
-      backoffLimit: 0
+      # retry many times so a run survives node reboots (Ubuntu upgrades, HA work);
+      # the script is idempotent (skips already-HEVC) so each retry resumes progress
+      backoffLimit: {{ .Values.job.backoffLimit | default 100 }}
       template:
         metadata:
           labels:

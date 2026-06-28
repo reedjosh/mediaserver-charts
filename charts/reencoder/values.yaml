@@ -7,6 +7,10 @@ schedule: "0 2 * * *"        # nightly at 02:00
 concurrencyPolicy: Forbid    # never overlap runs
 node: jayrdl3803             # pin to the storage node (local reads/writes)
 
+job:
+  backoffLimit: 100          # retry a run many times so it survives node reboots
+                             # (idempotent script resumes; raise further if needed)
+
 image:
   # CPU-only ffmpeg today. For NVENC later, swap to an ffmpeg image built with
   # nvenc support and set gpu.enabled=true (see below).
