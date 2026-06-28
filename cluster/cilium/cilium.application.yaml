@@ -31,6 +31,12 @@ spec:
         enableIPv4Masquerade: true
         bgpControlPlane:
           enabled: true
+        # Prometheus metrics (scraped by VMPodScrape/VMServiceScrape; no ServiceMonitor
+        # CRD in this cluster). Enabling adds the metrics port -> rolling agent restart.
+        prometheus:
+          enabled: true
+          serviceMonitor:
+            enabled: false
         # Maglev consistent hashing. SNAT (not DSR): replies must return THROUGH
         # pfSense for the NAT/port-forward + hairpin path to work (DSR breaks it).
         loadBalancer:
@@ -40,11 +46,17 @@ spec:
           tableSize: 16381
         operator:
           replicas: 2
+          prometheus:
+            enabled: true
+            serviceMonitor:
+              enabled: false
         hubble:
           relay:
             enabled: true
           ui:
             enabled: true
+          metrics:
+            enabled: [dns, drop, tcp, flow, icmp, http]
   syncPolicy:
     syncOptions:
       - ServerSideApply=true   # cilium ships large CRDs
