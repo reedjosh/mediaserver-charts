@@ -33,6 +33,10 @@ encode:
   crf: "20"             # x265 ~20-22 (lower = higher quality/larger)
   preset: slow          # x265 preset (medium/slow); av1 path would use a number
   pixfmt: yuv420p10le   # 10-bit even from 8-bit source (better compression, less banding)
+  maxratePct: "100"     # cap output bitrate at this % of the SOURCE bitrate so a re-encode
+                        # can never exceed the original (HEVC at <= source kbps is >= its quality).
+  keepMaxPct: "90"      # only keep the re-encode if it's < this % of the original size; otherwise
+                        # discard it, keep the original, and tombstone the file (never re-try).
 
 select:
   maxFiles: "20"        # cap files per run so a night's work is bounded

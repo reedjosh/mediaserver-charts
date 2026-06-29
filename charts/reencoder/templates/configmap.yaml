@@ -11,6 +11,9 @@ data:
     ROOT="$MEDIA_PATH"
     TRASH="$TRASH_DIR"
     mkdir -p "$TRASH"
+    # Tombstones: files we already re-encoded that came out no smaller. Kept OUTSIDE
+    # the trash dir so the retention purge never deletes it (re-encoding is expensive).
+    SKIPLIST="$(dirname "$TRASH")/.reencode-skiplist"
 
     # Purge re-encode trash older than the retention window (mtime is stamped
     # when a file is moved into trash, so this is "days since trashed").
@@ -34,7 +37,7 @@ data:
       HWOPTS=""
       QOPT="-crf $CRF -preset $PRESET"
     fi
-    echo "reencoder: codec=$CODEC encoder=$ENC crf=$CRF maxFiles=$MAX_FILES (>${MIN_SIZE_MB}MB, skipHDR=$SKIP_HDR skip4K=$SKIP_4K)"
+    echo "reencoder: codec=$CODEC encoder=$ENC crf=$CRF maxFiles=$MAX_FILES (>${MIN_SIZE_MB}MB, skipHDR=$SKIP_HDR skip4K=$SKIP_4K, maxrate=${REENCODE_MAXRATE_PCT:-100}%-of-source keepIfUnder=${KEEP_MAX_PCT:-90}%)"
 
     count=0
     find "$ROOT" -type f \( -name '*.mkv' -o -name '*.mp4' -o -name '*.avi' -o -name '*.m4v' \) | sort | while IFS= read -r f; do
@@ -42,6 +45,11 @@ data:
 
       sz=$(stat -c %s "$f" 2>/dev/null || echo 0)
       [ "$sz" -lt $(( MIN_SIZE_MB * 1024 * 1024 )) ] && continue
+
+      rel="${f#$ROOT/}"
+      # Tombstone: a prior run already re-encoded this and it came out no smaller, so
+      # skip it forever instead of burning hours re-encoding it to (again) no gain.
+      if [ -f "$SKIPLIST" ] && grep -Fxq "$rel" "$SKIPLIST"; then continue; fi
 
       # head -1 + strip whitespace: guard against multi-stream output / stray CR-LF
       # that previously broke the skip checks (re-encoded an HEVC HDR file by mistake)
@@ -56,24 +64,39 @@ data:
         case "$ct" in smpte2084|arib-std-b67) continue ;; esac
       fi
 
+      # Equal-quality heuristic: CRF still drives quality, but cap the output bitrate
+      # at a share of the SOURCE bitrate (kbps = bytes/125/sec). HEVC at <= the
+      # source's bitrate is >= its quality, and capping makes bloat impossible even
+      # before we measure the result.
+      dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$f" 2>/dev/null | cut -d. -f1)
+      kbps=0; RATEOPT=""
+      if [ "${dur:-0}" -gt 0 ]; then
+        kbps=$(( sz / 125 / dur ))
+        cap=$(( kbps * ${REENCODE_MAXRATE_PCT:-100} / 100 ))
+        [ "$cap" -gt 0 ] && RATEOPT="-maxrate ${cap}k -bufsize $(( cap * 2 ))k"
+      fi
+
       out="${f%.*}.reencode.tmp.mkv"
-      echo ">> $f  ($vc ${h}p $((sz/1024/1024))MB) -> $CODEC"
+      echo ">> $f  ($vc ${h}p $((sz/1024/1024))MB ${kbps}kbps) -> $CODEC"
       # shellcheck disable=SC2086
-      if ffmpeg -nostdin -y $HWOPTS -i "$f" -map 0 -c:v "$ENC" $QOPT -pix_fmt "$PIXFMT" \
+      if ffmpeg -nostdin -y $HWOPTS -i "$f" -map 0 -c:v "$ENC" $QOPT $RATEOPT -pix_fmt "$PIXFMT" \
                 -c:a copy -c:s copy "$out" </dev/null 2>/tmp/ff.log; then
-        d1=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$f" 2>/dev/null | cut -d. -f1)
         d2=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$out" 2>/dev/null | cut -d. -f1)
-        if [ -s "$out" ] && [ "${d2:-0}" -ge "$(( ${d1:-0} - 2 ))" ]; then
-          rel="${f#$ROOT/}"
+        newsz=$(stat -c %s "$out" 2>/dev/null || echo 0)
+        if [ ! -s "$out" ] || [ "${d2:-0}" -lt "$(( ${dur:-0} - 2 ))" ]; then
+          echo "   FAIL verify (dur ${dur:-?} vs ${d2:-?}) - keeping original"; rm -f "$out"
+        elif [ "$newsz" -ge "$(( sz * ${KEEP_MAX_PCT:-90} / 100 ))" ]; then
+          # No meaningful gain -> discard re-encode, keep original untouched, and
+          # tombstone so future runs never re-attempt this file.
+          echo "   no gain: $((sz/1024/1024))MB -> $((newsz/1024/1024))MB - keeping original, tombstoned"
+          rm -f "$out"; echo "$rel" >> "$SKIPLIST"; count=$((count+1))
+        else
           mkdir -p "$TRASH/$(dirname "$rel")"
           mv "$f" "$TRASH/$rel"
           touch "$TRASH/$rel"          # stamp trash time for the retention purge
           mv "$out" "${f%.*}.mkv"
-          newsz=$(stat -c %s "${f%.*}.mkv" 2>/dev/null || echo 0)
-          echo "   ok: $((sz/1024/1024))MB -> $((newsz/1024/1024))MB (original parked in trash)"
+          echo "   ok: $((sz/1024/1024))MB -> $((newsz/1024/1024))MB (saved $(( (sz-newsz)/1024/1024 ))MB, original parked in trash)"
           count=$((count+1))
-        else
-          echo "   FAIL verify (dur $d1 vs $d2) - keeping original"; rm -f "$out"
         fi
       else
         echo "   ffmpeg error - keeping original:"; tail -3 /tmp/ff.log; rm -f "$out"
