@@ -107,6 +107,19 @@ spec:
   selector: { app: home-assistant }
   ports: [{ port: 8123, targetPort: http, name: http }]
 ---
+# Dedicated LAN IP (Cilium BGP LoadBalancer) so the Hubitat hub can POST device
+# events directly to HA on the local network — no hairpin through the public ingress.
+apiVersion: v1
+kind: Service
+metadata:
+  name: home-assistant-lan
+  namespace: home-assistant
+  labels: { app: home-assistant }
+spec:
+  type: LoadBalancer
+  selector: { app: home-assistant }
+  ports: [{ port: 8123, targetPort: http, name: http }]
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
