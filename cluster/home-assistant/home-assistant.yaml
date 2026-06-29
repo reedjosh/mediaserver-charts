@@ -58,33 +58,85 @@ metadata:
   namespace: home-assistant
 data:
   alarm.yaml: |
+    # Latch for the triggered state (HSM's intrusion alert isn't exposed via Maker
+    # API, so HA does the detect->latch->notify itself; HSM stays arm/disarm truth).
+    input_boolean:
+      alarm_triggered:
+        name: Alarm Triggered
+        icon: mdi:alarm-light
+
     rest_command:
       hsm_arm_away: { url: !secret hsm_url_arm_away, method: GET }
       hsm_arm_home: { url: !secret hsm_url_arm_home, method: GET }
       hsm_arm_night: { url: !secret hsm_url_arm_night, method: GET }
       hsm_disarm:   { url: !secret hsm_url_disarm,   method: GET }
+      ntfy_alarm:
+        url: !secret ntfy_alarm_url
+        method: POST
+        content_type: "text/plain"
+        headers:
+          Authorization: !secret ntfy_auth_header
+          Title: "Home Alarm"
+          Priority: "urgent"
+          Tags: "rotating_light,house"
+        payload: "{{ message }}"
 
     template:
       - alarm_control_panel:
           - name: House Alarm
             unique_id: house_alarm_hsm
             state: >
-              {% set s = states('sensor.hub_hsm_status') | lower | replace(' ', '') | replace('_', '') %}
-              {% if 'intrusion' in s or 'alert' in s %} triggered
-              {% elif s == 'armedaway' %} armed_away
-              {% elif s == 'armedhome' %} armed_home
-              {% elif s == 'armednight' %} armed_night
-              {% elif 'arming' in s %} arming
-              {% else %} disarmed {% endif %}
+              {% if is_state('input_boolean.alarm_triggered', 'on') %} triggered
+              {% else %}
+                {% set s = states('sensor.hub_hsm_status') | lower | replace(' ', '') | replace('_', '') %}
+                {% if s == 'armedaway' %} armed_away
+                {% elif s == 'armedhome' %} armed_home
+                {% elif s == 'armednight' %} armed_night
+                {% elif 'arming' in s %} arming
+                {% else %} disarmed {% endif %}
+              {% endif %}
             code_arm_required: false
-            arm_away:
-              - action: rest_command.hsm_arm_away
-            arm_home:
-              - action: rest_command.hsm_arm_home
-            arm_night:
-              - action: rest_command.hsm_arm_night
-            disarm:
-              - action: rest_command.hsm_disarm
+            arm_away:  [{ action: rest_command.hsm_arm_away }]
+            arm_home:  [{ action: rest_command.hsm_arm_home }]
+            arm_night: [{ action: rest_command.hsm_arm_night }]
+            disarm:    [{ action: rest_command.hsm_disarm }]
+
+    automation:
+      # Intrusion: a monitored sensor opens while armed, past the exit grace, and
+      # still armed after the entry delay -> latch triggered + push to ntfy.
+      - alias: Alarm - intrusion (front door)
+        id: alarm_intrusion_front_door
+        mode: restart
+        trigger:
+          - platform: state
+            entity_id: binary_sensor.foyer_front_door_contact
+            to: "on"
+        condition:
+          - condition: template
+            value_template: "{{ states('sensor.hub_hsm_status') | lower | replace(' ','') | replace('_','') in ['armedaway','armedhome','armednight'] }}"
+          - condition: template
+            value_template: "{{ (now() - states.sensor.hub_hsm_status.last_changed).total_seconds() > 45 }}"
+        action:
+          - delay: "00:00:30"     # entry delay: time to disarm before it actually alarms
+          - condition: template
+            value_template: "{{ states('sensor.hub_hsm_status') | lower | replace(' ','') | replace('_','') in ['armedaway','armedhome','armednight'] }}"
+          - action: input_boolean.turn_on
+            target: { entity_id: input_boolean.alarm_triggered }
+          - action: rest_command.ntfy_alarm
+            data: { message: "INTRUSION: Front Door opened while armed." }
+
+      # Clear the latch whenever HSM goes disarmed.
+      - alias: Alarm - clear on disarm
+        id: alarm_clear_on_disarm
+        trigger:
+          - platform: state
+            entity_id: sensor.hub_hsm_status
+        condition:
+          - condition: template
+            value_template: "{{ states('sensor.hub_hsm_status') | lower | replace(' ','') | replace('_','') in ['disarmed','alldisarmed'] }}"
+        action:
+          - action: input_boolean.turn_off
+            target: { entity_id: input_boolean.alarm_triggered }
 ---
 apiVersion: apps/v1
 kind: Deployment
