@@ -33,6 +33,9 @@ data:
   configuration.yaml: |
     default_config:
 
+    homeassistant:
+      packages: !include_dir_named packages   # git-managed config (alarm panel, etc.)
+
     http:
       use_x_forwarded_for: true
       trusted_proxies:
@@ -42,6 +45,46 @@ data:
     automation: !include automations.yaml
     script: !include scripts.yaml
     scene: !include scenes.yaml
+---
+# Git-managed HA config, loaded as a "package". The Hubitat Safety Monitor alarm
+# surfaces as an alarm_control_panel: state read from the integration's
+# sensor.hub_hsm_status; arm/disarm POST to the Maker API HSM endpoints. The URLs
+# (which embed the access token) live in the out-of-band ha-secrets Secret, so
+# nothing sensitive is in git.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ha-packages
+  namespace: home-assistant
+data:
+  alarm.yaml: |
+    rest_command:
+      hsm_arm_away: { url: !secret hsm_url_arm_away, method: GET }
+      hsm_arm_home: { url: !secret hsm_url_arm_home, method: GET }
+      hsm_arm_night: { url: !secret hsm_url_arm_night, method: GET }
+      hsm_disarm:   { url: !secret hsm_url_disarm,   method: GET }
+
+    template:
+      - alarm_control_panel:
+          - name: House Alarm
+            unique_id: house_alarm_hsm
+            state: >
+              {% set s = states('sensor.hub_hsm_status') | lower | replace(' ', '') | replace('_', '') %}
+              {% if 'intrusion' in s or 'alert' in s %} triggered
+              {% elif s == 'armedaway' %} armed_away
+              {% elif s == 'armedhome' %} armed_home
+              {% elif s == 'armednight' %} armed_night
+              {% elif 'arming' in s %} arming
+              {% else %} disarmed {% endif %}
+            code_arm_required: false
+            arm_away:
+              - action: rest_command.hsm_arm_away
+            arm_home:
+              - action: rest_command.hsm_arm_home
+            arm_night:
+              - action: rest_command.hsm_arm_night
+            disarm:
+              - action: rest_command.hsm_disarm
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -72,6 +115,10 @@ spec:
               else
                 echo "existing config present — leaving it alone"
               fi
+              # Idempotently load git-managed packages on the pre-existing config too.
+              if ! grep -q 'include_dir_named packages' /config/configuration.yaml; then
+                printf '\nhomeassistant:\n  packages: !include_dir_named packages\n' >> /config/configuration.yaml
+              fi
           volumeMounts:
             - { name: config, mountPath: /config }
             - { name: seed, mountPath: /seed }
@@ -83,6 +130,8 @@ spec:
           ports: [{ containerPort: 8123, name: http }]
           volumeMounts:
             - { name: config, mountPath: /config }
+            - { name: packages, mountPath: /config/packages, readOnly: true }   # git-managed HA config
+            - { name: secrets, mountPath: /config/secrets.yaml, subPath: secrets.yaml, readOnly: true }
           startupProbe:                # HA can take a while on first boot (image is large, DB init)
             httpGet: { path: /manifest.json, port: http }
             periodSeconds: 10
@@ -97,6 +146,8 @@ spec:
       volumes:
         - { name: config, persistentVolumeClaim: { claimName: ha-config } }
         - { name: seed, configMap: { name: ha-seed } }
+        - { name: packages, configMap: { name: ha-packages } }
+        - { name: secrets, secret: { secretName: ha-secrets } }   # HSM URLs+token, out-of-band (not in git)
 ---
 apiVersion: v1
 kind: Service
