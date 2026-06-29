@@ -117,11 +117,11 @@ data:
           - platform: state
             entity_id: sensor.hub_hsm_status
             to: "armedAway"
-            for: "00:00:20"
+            for: "00:00:30"
         condition:
           - condition: state
             entity_id: binary_sensor.foyer_front_door_contact
-            to: "on"
+            state: "on"
           - condition: template
             value_template: "{{ states('sensor.hub_hsm_status') | lower | replace(' ','') | replace('_','') in ['armedaway','armedhome','armednight'] }}"
           - condition: template
