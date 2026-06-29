@@ -54,6 +54,33 @@ spec:
           annotations:
             summary: 'Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash-looping'
             description: 'Container {{ $labels.container }} restarted >5x in 15m.'
+    - name: homelab.scheduling
+      # Catches the failure mode where kube-scheduler is UP (lease held, /healthz ok)
+      # but silently not scheduling — e.g. its informers wedge after an apiserver/RBAC
+      # blip during reboots, so it runs blind and pods sit Pending with no events.
+      # The stock KubeSchedulerDown (up==0) can't see this; these can.
+      rules:
+        - alert: KubePodStuckPending
+          # Broad, root-cause-agnostic safety net: any pod that can't get going for 15m
+          # (unschedulable, wedged scheduler, unbound PVC, no capacity, image pull stuck).
+          expr: kube_pod_status_phase{phase="Pending"} == 1
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: 'Pod {{ $labels.namespace }}/{{ $labels.pod }} stuck Pending for 15m'
+            description: 'Not running after 15m — check scheduling (node/PVC/resources) or a wedged kube-scheduler.'
+        - alert: KubeSchedulerNotScheduling
+          # Targeted cause detector: pods are waiting to be placed, yet the scheduler has
+          # made ZERO scheduling attempts in 10m -> it's alive but not doing its job.
+          expr: |
+            (sum(rate(scheduler_schedule_attempts_total[10m])) == 0)
+            and on()
+            (count(kube_pod_status_phase{phase="Pending"} == 1) > 0)
+          for: 10m
+          labels: { severity: critical }
+          annotations:
+            summary: 'kube-scheduler is up but not scheduling any pods'
+            description: 'Pending pods exist but the scheduler made no scheduling attempts in 10m (wedged informers?). Restart the kube-scheduler static pods.'
     - name: homelab.controlplane
       rules:
         - alert: EtcdNoLeader
