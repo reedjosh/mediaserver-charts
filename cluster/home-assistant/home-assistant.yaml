@@ -120,7 +120,10 @@ metadata:
 spec:
   type: LoadBalancer
   selector: { app: home-assistant }
-  ports: [{ port: 8123, targetPort: http, name: http }]
+  ports:
+    - { port: 8123, targetPort: 8123, name: http }
+    - { port: 8124, targetPort: 8124, name: hubitat-events }  # hacs-hubitat event listener
+
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
