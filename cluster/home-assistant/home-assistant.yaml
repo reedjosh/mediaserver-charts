@@ -77,7 +77,7 @@ spec:
             - { name: seed, mountPath: /seed }
       containers:
         - name: home-assistant
-          image: ghcr.io/home-assistant/home-assistant:stable   # TODO pin to exact version once running
+          image: ghcr.io/home-assistant/home-assistant:2026.6.4
           env:
             - { name: TZ, value: "US/Central" }
           ports: [{ containerPort: 8123, name: http }]
