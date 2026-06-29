@@ -108,16 +108,26 @@ data:
         id: alarm_intrusion_front_door
         mode: restart
         trigger:
+          # Trip on the door opening...
           - platform: state
             entity_id: binary_sensor.foyer_front_door_contact
             to: "on"
+          # ...OR if the door is still open when the exit grace ends (can't defeat
+          # it by propping the door during the leave window).
+          - platform: state
+            entity_id: sensor.hub_hsm_status
+            to: "armedAway"
+            for: "00:00:20"
         condition:
+          - condition: state
+            entity_id: binary_sensor.foyer_front_door_contact
+            to: "on"
           - condition: template
             value_template: "{{ states('sensor.hub_hsm_status') | lower | replace(' ','') | replace('_','') in ['armedaway','armedhome','armednight'] }}"
           - condition: template
-            value_template: "{{ (now() - states.sensor.hub_hsm_status.last_changed).total_seconds() > 45 }}"
+            value_template: "{{ (now() - states.sensor.hub_hsm_status.last_changed).total_seconds() > 20 }}"
         action:
-          - delay: "00:00:30"     # entry delay: time to disarm before it actually alarms
+          - delay: "00:00:20"     # entry delay: time to disarm before it actually alarms
           - condition: template
             value_template: "{{ states('sensor.hub_hsm_status') | lower | replace(' ','') | replace('_','') in ['armedaway','armedhome','armednight'] }}"
           - action: input_boolean.turn_on
