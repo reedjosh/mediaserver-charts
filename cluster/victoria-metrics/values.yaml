@@ -1,0 +1,145 @@
+# VictoriaMetrics k8s stack values — GitOps source of truth.
+# Rendered by the multi-source 'victoria-metrics' Argo app (chart from the VM helm repo,
+# these values via a $values git ref). Was previously an imperative inline valuesObject.
+# Key choices: VMCluster HA (vmsingle off), vmstorage on node-local 'local-path' SSD with
+# minFreeDiskSpaceBytes guard, RF=2, alertmanager routed to the ntfy bridge.
+alertmanager:
+  config:
+    receivers:
+      - name: ntfy
+        webhook_configs:
+          - send_resolved: true
+            url: http://alertmanager-ntfy.monitoring.svc:8000/hook
+      - name: "null"
+    route:
+      group_by:
+        - alertname
+        - severity
+        - namespace
+      group_interval: 5m
+      group_wait: 30s
+      receiver: ntfy
+      repeat_interval: 4h
+      routes:
+        - matchers:
+            - alertname=~"Watchdog|InfoInhibitor|RecordingRulesNoData|RecordingRulesError|AlertingRulesError"
+          receiver: "null"
+        - matchers:
+            - severity="info"
+          receiver: "null"
+  enabled: true
+  spec:
+    replicaCount: 2
+defaultDashboards:
+  annotations:
+    argocd.argoproj.io/sync-options: ServerSideApply=true
+  enabled: true
+defaultRules:
+  create: true
+fullnameOverride: vm
+grafana:
+  adminPassword: change-this-now
+  enabled: true
+  grafana.ini:
+    server:
+      root_url: https://grafana.thereedfamily.rocks
+  image:
+    tag: 11.6.0
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/backend-protocol: HTTP
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    enabled: true
+    hosts:
+      - grafana.thereedfamily.rocks
+    ingressClassName: nginx
+    tls:
+      - hosts:
+          - grafana.thereedfamily.rocks
+        secretName: grafana-tls
+  persistence:
+    enabled: true
+    size: 20Gi
+    type: pvc
+kube-state-metrics:
+  enabled: true
+kubeControllerManager:
+  vmScrape:
+    spec:
+      endpoints:
+        - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+          port: http-metrics
+          scheme: https
+          tlsConfig:
+            caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            insecureSkipVerify: true
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  vmScrape:
+    spec:
+      endpoints:
+        - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+          port: http-metrics
+          scheme: https
+          tlsConfig:
+            caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            insecureSkipVerify: true
+prometheus-node-exporter:
+  enabled: true
+vmagent:
+  enabled: true
+  spec:
+    scrapeInterval: 30s
+vmalert:
+  enabled: true
+  spec:
+    replicaCount: 2
+vmcluster:
+  enabled: true
+  spec:
+    replicationFactor: 2
+    retentionPeriod: "3"
+    vminsert:
+      replicaCount: 2
+    vmselect:
+      replicaCount: 2
+    vmstorage:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: vmstorage
+                topologyKey: kubernetes.io/hostname
+              weight: 100
+      extraArgs:
+        storage.minFreeDiskSpaceBytes: 15GB
+      replicaCount: 3
+      storage:
+        volumeClaimTemplate:
+          spec:
+            resources:
+              requests:
+                storage: 50Gi
+            storageClassName: local-path
+      topologySpreadConstraints:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: vmstorage
+          maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+vmsingle:
+  enabled: false
+  spec:
+    retentionPeriod: 30d
+    storage:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 50Gi
