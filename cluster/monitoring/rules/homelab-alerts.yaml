@@ -64,7 +64,7 @@ spec:
           # Broad, root-cause-agnostic safety net: any pod that can't get going for 15m
           # (unschedulable, wedged scheduler, unbound PVC, no capacity, image pull stuck).
           expr: kube_pod_status_phase{phase="Pending"} == 1
-          for: 15m
+          for: 1m
           labels: { severity: warning }
           annotations:
             summary: 'Pod {{ $labels.namespace }}/{{ $labels.pod }} stuck Pending for 15m'
