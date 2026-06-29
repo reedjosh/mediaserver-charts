@@ -1,0 +1,134 @@
+# Home Assistant — the unified home control panel (alarm view/arm, thermostat,
+# air quality, solar, lights, shades). Hubitat (192.168.50.11) stays the Z-Wave
+# radio hub + local alarm engine (HSM); HA pulls its devices in over the LAN via
+# the Hubitat Maker API, so day-to-day everything lives in HA, not Hubitat.
+#
+# Runs as HA *Container* (no Supervisor/add-ons) — fine here because the radios
+# live on Hubitat, so HA needs no USB passthrough, just network access.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: home-assistant
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ha-config
+  namespace: home-assistant
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path        # node-local SSD: HA's SQLite recorder is write-heavy
+  resources:                          # and unreliable on NFS. HA is a singleton, so pinning is ok.
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ha-seed
+  namespace: home-assistant
+data:
+  # Seeded into /config ONLY if no configuration.yaml exists yet (first boot).
+  # trusted_proxies must include the ingress-nginx pod network or HA 400s behind the proxy.
+  configuration.yaml: |
+    default_config:
+
+    http:
+      use_x_forwarded_for: true
+      trusted_proxies:
+        - 10.244.0.0/16   # Cilium pod CIDR (ingress-nginx controller)
+        - 127.0.0.1
+
+    automation: !include automations.yaml
+    script: !include scripts.yaml
+    scene: !include scenes.yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: home-assistant
+  namespace: home-assistant
+  labels: { app: home-assistant }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }        # single SQLite writer on the RWO volume
+  selector: { matchLabels: { app: home-assistant } }
+  template:
+    metadata: { labels: { app: home-assistant } }
+    spec:
+      initContainers:
+        - name: seed-config
+          image: busybox:1.36
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              if [ ! -f /config/configuration.yaml ]; then
+                echo "seeding fresh HA config"
+                cp /seed/configuration.yaml /config/configuration.yaml
+                : > /config/automations.yaml
+                : > /config/scripts.yaml
+                : > /config/scenes.yaml
+              else
+                echo "existing config present — leaving it alone"
+              fi
+          volumeMounts:
+            - { name: config, mountPath: /config }
+            - { name: seed, mountPath: /seed }
+      containers:
+        - name: home-assistant
+          image: ghcr.io/home-assistant/home-assistant:stable   # TODO pin to exact version once running
+          env:
+            - { name: TZ, value: "US/Central" }
+          ports: [{ containerPort: 8123, name: http }]
+          volumeMounts:
+            - { name: config, mountPath: /config }
+          startupProbe:                # HA can take a while on first boot (image is large, DB init)
+            httpGet: { path: /manifest.json, port: http }
+            periodSeconds: 10
+            failureThreshold: 60       # up to 10 min
+          livenessProbe:
+            httpGet: { path: /manifest.json, port: http }
+            periodSeconds: 30
+            failureThreshold: 5
+          resources:
+            requests: { cpu: "100m", memory: 512Mi }
+            limits:   { memory: 2Gi }
+      volumes:
+        - { name: config, persistentVolumeClaim: { claimName: ha-config } }
+        - { name: seed, configMap: { name: ha-seed } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: home-assistant
+  namespace: home-assistant
+spec:
+  selector: { app: home-assistant }
+  ports: [{ port: 8123, targetPort: http, name: http }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: home-assistant
+  namespace: home-assistant
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"   # HA uses long-lived websockets
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: ["home-assistant.thereedfamily.rocks"]
+      secretName: home-assistant-tls
+  rules:
+    - host: home-assistant.thereedfamily.rocks
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: home-assistant
+                port: { name: http }

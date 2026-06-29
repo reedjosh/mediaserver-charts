@@ -1,0 +1,27 @@
+# Home Assistant — unified home control panel. Hubitat remains the Z-Wave hub +
+# alarm engine; HA is the front-end + broad integrations, on the josh cluster.
+# Apply with: kubectl apply -f home-assistant.application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: home-assistant
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: home-assistant
+  source:
+    repoURL: https://github.com/reedjosh/mediaserver-charts
+    targetRevision: main
+    path: cluster/home-assistant
+    directory:
+      recurse: false
+      include: '{home-assistant.yaml}'
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true
