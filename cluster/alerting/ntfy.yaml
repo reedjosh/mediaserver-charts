@@ -1,5 +1,24 @@
 # ntfy — self-hosted push notifications. Alertmanager (via the alertmanager-ntfy
 # bridge) publishes to the `homelab-alerts` topic; subscribe on your phone.
+#
+# Auth is deny-all + login. Users/tokens are created imperatively against the pod
+# (they persist on the ntfy-data PVC below, so they are NOT in git). Current users:
+#   - josh      : admin, read-write to all topics.
+#   - mediapub  : write-only to `homelab-alerts` + `media-alerts`. Used by the
+#                 mediaserver apps (namespace mediaserver) to publish alerts:
+#                   Radarr/Sonarr  -> homelab-alerts (health issues / manual
+#                                     interaction / failed grabs, priority High)
+#                   Jellyseerr     -> media-alerts   (requests pending approval +
+#                                     failed requests)
+#                 The app-side notification config lives in each app's own config
+#                 PVC (not in git). Token label "media-apps"; token value + a
+#                 generated password are stored on the PVC at
+#                 /var/lib/ntfy/mediapub.token and /var/lib/ntfy/mediapub.pass.
+#     Recreate mediapub if the PVC is ever lost:
+#       ntfy user add mediapub                       # NTFY_PASSWORD env for non-interactive
+#       ntfy access mediapub homelab-alerts write
+#       ntfy access mediapub media-alerts  write
+#       ntfy token add --label media-apps mediapub   # then repoint the apps
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

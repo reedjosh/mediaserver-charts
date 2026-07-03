@@ -13,6 +13,9 @@ metadata:
     {{- include "mediaserver.labels" . | nindent 4 }}
 data:
   {{- include "mediaserver.idEnv" . | nindent 2 }}
+  {{- with .Values.extraEnv }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
 {{- if .Values.initConfig.enabled }}
 ---
 apiVersion: v1

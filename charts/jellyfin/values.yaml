@@ -47,6 +47,13 @@ ingress:
 
 # Co-locate jellyfin on the node that hosts the data volume (.227) so library
 # reads are node-local instead of crossing the network via NFS from another node.
+# The GPU resource below also pins it there (only .227 has one).
 nodeSelector:
   kubernetes.io/hostname: jayrdl3803
-resources: {}
+# NVENC/NVDEC hardware transcoding: the device plugin injects the GPU; the
+# "video" capability is required for the encoder/decoder engines.
+extraEnv:
+  NVIDIA_DRIVER_CAPABILITIES: "compute,video,utility"
+resources:
+  limits:
+    nvidia.com/gpu: 1

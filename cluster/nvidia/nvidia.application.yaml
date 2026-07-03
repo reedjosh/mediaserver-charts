@@ -1,0 +1,29 @@
+# NVIDIA k8s device plugin: advertises nvidia.com/gpu on GPU nodes so pods can
+# request the GPU as a resource. Only schedules where the node is labeled
+# (label applied out of band): kubectl label node jayrdl3803 nvidia.com/gpu.present=true
+# Host prereqs on the GPU node: nvidia driver + nvidia-container-toolkit with
+# the nvidia runtime set as containerd's DEFAULT runtime (so no RuntimeClass
+# objects are needed; non-GPU pods behave exactly as under runc).
+# Apply with: kubectl apply -f nvidia.application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nvidia-device-plugin
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    name: in-cluster
+    namespace: kube-system
+  source:
+    chart: nvidia-device-plugin
+    repoURL: https://nvidia.github.io/k8s-device-plugin
+    targetRevision: 0.19.3
+    helm:
+      valuesObject:
+        nodeSelector:
+          nvidia.com/gpu.present: "true"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
