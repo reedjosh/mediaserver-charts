@@ -47,11 +47,11 @@ select:
 # GPU hardware encode (off until the card arrives). When enabled, the script
 # uses hevc_nvenc/av1_nvenc and requests the GPU resource below.
 gpu:
-  enabled: false
+  enabled: true
   vendor: nvidia                 # nvidia | intel
   resourceName: nvidia.com/gpu   # or gpu.intel.com/i915 for Arc
-  runtimeClassName: ""           # e.g. "nvidia" if your node uses a runtime class
+  runtimeClassName: ""           # nvidia runtime is containerd's default on .227 - not needed
 
 resources:
-  requests: { cpu: "2", memory: 2Gi }    # low request -> yields to Jellyfin under contention
-  limits:   { cpu: "54", memory: 16Gi }  # burst x265 up to 54 threads (3/4 of the 72 on .227)
+  requests: { cpu: "1", memory: 2Gi }
+  limits:   { cpu: "8", memory: 8Gi }    # NVENC offloads the encode; CPU only demuxes/filters

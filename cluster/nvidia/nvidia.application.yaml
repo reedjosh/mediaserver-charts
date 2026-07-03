@@ -23,6 +23,19 @@ spec:
       valuesObject:
         nodeSelector:
           nvidia.com/gpu.present: "true"
+        # Time-slice the single RTX PRO 2000 into 4 schedulable slots so
+        # jellyfin + reencoder (+ headroom) can share it. NVENC handles
+        # concurrent sessions fine on pro cards; this only affects k8s
+        # scheduling accounting, not actual GPU partitioning.
+        config:
+          map:
+            default: |-
+              version: v1
+              sharing:
+                timeSlicing:
+                  resources:
+                    - name: nvidia.com/gpu
+                      replicas: 4
   syncPolicy:
     automated:
       prune: true
