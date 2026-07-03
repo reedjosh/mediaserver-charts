@@ -5,6 +5,16 @@
 # minFreeDiskSpaceBytes guard, RF=2, alertmanager routed to the ntfy bridge.
 alertmanager:
   config:
+    # While a node is down (fast NodeDown rule, fires at 3m), mute the
+    # derivative warning-storm (pods/targets/replicas on that node) but let
+    # NodeDown itself and anything critical still page. resolve-side spam is
+    # muted the same way because inhibition applies until the source resolves.
+    inhibit_rules:
+      - source_matchers:
+          - alertname = "NodeDown"
+        target_matchers:
+          - alertname != "NodeDown"
+          - severity != "critical"
     receivers:
       - name: ntfy
         webhook_configs:

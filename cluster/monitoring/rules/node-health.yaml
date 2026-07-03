@@ -25,6 +25,18 @@ spec:
           annotations:
             summary: 'CPU {{ $labels.chip }} on {{ $labels.instance }} at {{ $value | printf "%.0f" }}°C — throttling'
             description: 'CPU package on {{ $labels.instance }} is at/above the throttle point (chip critical is 95-98°C). Thermal shutdown risk — investigate now.'
+    - name: homelab.node.availability
+      rules:
+        - alert: NodeDown
+          # Fast node-down signal (stock KubeNodeNotReady waits 15m). Doubles as
+          # the alertmanager inhibition source that mutes the derivative
+          # warning-storm (pods, targets, replicas) while a node is out.
+          expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 3m
+          labels: { severity: warning }
+          annotations:
+            summary: 'Node {{ $labels.node }} is not Ready'
+            description: 'Node {{ $labels.node }} has been NotReady/unreachable for 3m. Derivative warnings are inhibited until it returns.'
     - name: homelab.node.utilization
       rules:
         - alert: NodeCPUHigh
