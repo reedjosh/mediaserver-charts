@@ -1,0 +1,51 @@
+# Node thermal + utilization alerts (added after the 2026-07-03 runaway-reencoder
+# incident: 4h of duplicate ffmpeg pegged CPU pkg1 on jayrdl3803 at 82°C with no page).
+# Thresholds are anchored to what coretemp reports on these DL380s:
+# throttle (temp_max) = 85-88°C, critical (temp_crit) = 95-98°C.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: node-health
+  namespace: monitoring
+spec:
+  groups:
+    - name: homelab.node.thermal
+      rules:
+        - alert: NodeCPUTempHigh
+          expr: max by (instance, chip) (node_hwmon_temp_celsius{chip=~"platform_coretemp_.+"}) > 80
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: 'CPU {{ $labels.chip }} on {{ $labels.instance }} at {{ $value | printf "%.0f" }}°C'
+            description: 'CPU package temp on {{ $labels.instance }} has been above 80°C for 10m (throttle point is 85-88°C). Check for runaway workloads or cooling problems.'
+        - alert: NodeCPUTempCritical
+          expr: max by (instance, chip) (node_hwmon_temp_celsius{chip=~"platform_coretemp_.+"}) > 88
+          for: 3m
+          labels: { severity: critical }
+          annotations:
+            summary: 'CPU {{ $labels.chip }} on {{ $labels.instance }} at {{ $value | printf "%.0f" }}°C — throttling'
+            description: 'CPU package on {{ $labels.instance }} is at/above the throttle point (chip critical is 95-98°C). Thermal shutdown risk — investigate now.'
+    - name: homelab.node.utilization
+      rules:
+        - alert: NodeCPUHigh
+          expr: 100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))) > 90
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: 'CPU on {{ $labels.instance }} at {{ $value | printf "%.0f" }}% for 15m'
+            description: 'Sustained >90% CPU on {{ $labels.instance }}. Expected during transcodes; otherwise check for runaway processes.'
+        - alert: NodeMemoryHigh
+          expr: 100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 90
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: 'Memory on {{ $labels.instance }} at {{ $value | printf "%.0f" }}%'
+            description: 'Less than 10% memory available on {{ $labels.instance }} for 10m — OOM-kill risk for pods.'
+        - alert: NodeLoadHigh
+          # Load per core > 1.5 catches IO-wait pileups and fork storms that CPU% misses.
+          expr: node_load15 / count by (instance) (node_cpu_seconds_total{mode="idle"}) > 1.5
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: 'Load on {{ $labels.instance }} is {{ $value | printf "%.1f" }}x core count'
+            description: '15m load average on {{ $labels.instance }} exceeds 1.5x cores — CPU saturation or IO wait (check NFS/disk).'
