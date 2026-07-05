@@ -37,6 +37,8 @@ encode:
                         # can never exceed the original (HEVC at <= source kbps is >= its quality).
   keepMaxPct: "90"      # only keep the re-encode if it's < this % of the original size; otherwise
                         # discard it, keep the original, and tombstone the file (never re-try).
+  threads: "6"          # cap ffmpeg decode/filter threads. All of them NUMA-pin to CPU pkg1
+                        # (GPU is on proc 2's PCIe lanes) - uncapped they ran pkg1 to 85°C.
 
 select:
   maxFiles: "20"        # cap files per run so a night's work is bounded

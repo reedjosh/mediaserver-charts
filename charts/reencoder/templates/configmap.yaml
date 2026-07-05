@@ -81,8 +81,12 @@ data:
 
       out="${f%.*}.reencode.tmp.mkv"
       echo ">> $f  ($vc ${h}p $((sz/1024/1024))MB ${kbps}kbps) -> $CODEC"
+      # -threads caps decode (incl. software fallback) + encode; -filter_threads caps the
+      # pix_fmt conversion. All ffmpeg work NUMA-pins to the GPU's socket (proc 2), so
+      # uncapped threads turn one package into a hotspot while the other idles.
       # shellcheck disable=SC2086
-      if ffmpeg -nostdin -y $HWOPTS -i "$f" -map 0 -c:v "$ENC" $QOPT $RATEOPT -pix_fmt "$PIXFMT" \
+      if ffmpeg -nostdin -y -threads "${THREADS:-6}" -filter_threads "${THREADS:-6}" $HWOPTS -i "$f" \
+                -map 0 -threads "${THREADS:-6}" -c:v "$ENC" $QOPT $RATEOPT -pix_fmt "$PIXFMT" \
                 -c:a copy -c:s copy "$out" </dev/null 2>/tmp/ff.log; then
         d2=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$out" 2>/dev/null | cut -d. -f1)
         newsz=$(stat -c %s "$out" 2>/dev/null || echo 0)

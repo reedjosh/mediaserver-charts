@@ -51,6 +51,7 @@ spec:
                 - { name: SKIP_4K,     value: {{ .Values.select.skip4k | quote }} }
                 - { name: REENCODE_MAXRATE_PCT, value: {{ .Values.encode.maxratePct | default "100" | quote }} }
                 - { name: KEEP_MAX_PCT,         value: {{ .Values.encode.keepMaxPct | default "90" | quote }} }
+                - { name: THREADS,              value: {{ .Values.encode.threads | default "6" | quote }} }
                 - { name: GPU_ENABLED, value: {{ ternary "1" "0" .Values.gpu.enabled | quote }} }
                 - { name: GPU_VENDOR,  value: {{ .Values.gpu.vendor | quote }} }
                 {{- if and .Values.gpu.enabled (eq .Values.gpu.vendor "nvidia") }}
