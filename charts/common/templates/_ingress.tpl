@@ -7,9 +7,15 @@ metadata:
   name: {{ .Chart.Name }}
   labels:
     {{- include "mediaserver.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
+  {{- if or .Values.ingress.annotations .Values.ingress.ssoMiddlewares }}
   annotations:
+    {{- with .Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.ingress.ssoMiddlewares }}
+    {{- /* Zitadel SSO via oauth2-proxy forwardAuth (homelab-gitops sso/) */}}
+    traefik.ingress.kubernetes.io/router.middlewares: sso-oauth-errors@kubernetescrd,sso-oauth-auth@kubernetescrd
+    {{- end }}
   {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
