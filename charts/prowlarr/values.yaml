@@ -30,7 +30,7 @@ ingress:
   host: media.thereedfamily.rocks
   path: /prowlarr
   # Zitadel SSO (oauth2-proxy forwardAuth); /prowlarr/api bypasses it upstream where applicable
-  ssoMiddlewares: false
+  ssoMiddlewares: true
   tls:
     enabled: true
     secretName: prowlarr-tls

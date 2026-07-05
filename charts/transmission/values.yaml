@@ -35,7 +35,7 @@ ingress:
   host: media.thereedfamily.rocks
   path: /transmission
   # Zitadel SSO (oauth2-proxy forwardAuth); /transmission/api bypasses it upstream where applicable
-  ssoMiddlewares: false
+  ssoMiddlewares: true
   tls:
     enabled: true
     secretName: transmission-tls

@@ -32,7 +32,7 @@ ingress:
   host: media.thereedfamily.rocks
   path: /radarr
   # Zitadel SSO (oauth2-proxy forwardAuth); /radarr/api bypasses it upstream where applicable
-  ssoMiddlewares: false
+  ssoMiddlewares: true
   tls:
     enabled: true
     secretName: radarr-tls

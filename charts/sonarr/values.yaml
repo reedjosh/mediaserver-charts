@@ -31,7 +31,7 @@ ingress:
   host: media.thereedfamily.rocks
   path: /sonarr
   # Zitadel SSO (oauth2-proxy forwardAuth); /sonarr/api bypasses it upstream where applicable
-  ssoMiddlewares: false
+  ssoMiddlewares: true
   tls:
     enabled: true
     secretName: sonarr-tls
