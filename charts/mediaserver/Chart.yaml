@@ -31,7 +31,7 @@ dependencies:
     version: 0.1.0
     repository: file://../reencoder
     condition: reencoder.enabled
-  - name: decluttarr
+  - name: qbittorrent
     version: 0.1.0
-    repository: file://../decluttarr
-    condition: decluttarr.enabled
+    repository: file://../qbittorrent
+    condition: qbittorrent.enabled

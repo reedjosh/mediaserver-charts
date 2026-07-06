@@ -17,8 +17,8 @@ dependencies:
 - name: reencoder
   repository: file://../reencoder
   version: 0.1.0
-- name: decluttarr
-  repository: file://../decluttarr
+- name: qbittorrent
+  repository: file://../qbittorrent
   version: 0.1.0
-digest: sha256:758445ac009e26c484bc5d1e1dc3f91d5fd39b744bb0ebe84df83ad36f298e61
-generated: "2026-06-26T23:30:54.102685403-05:00"
+digest: sha256:20c6cacfb7d7af82574d8507527534c5061698e6b1a42eb1b64b5ec3f3e58dcf
+generated: "2026-07-06T13:37:31.300894644-05:00"
