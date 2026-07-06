@@ -28,16 +28,16 @@ initConfig:
 
 ingress:
   enabled: true
-  className: nginx
+  className: traefik
   host: media.thereedfamily.rocks
   path: /radarr
+  # Zitadel SSO (oauth2-proxy forwardAuth); /radarr/api bypasses it upstream where applicable
+  ssoMiddlewares: false
   tls:
     enabled: true
     secretName: radarr-tls
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
-    nginx.ingress.kubernetes.io/backend-protocol: HTTP
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
 
 nodeSelector: {}
 resources: {}

@@ -32,18 +32,18 @@ initConfig:
 
 ingress:
   enabled: true
-  className: nginx
+  className: traefik
   host: jelly.thereedfamily.rocks
   path: /
+  # Native Jellyfin auth (TV/mobile clients can't do browser SSO); no ssoMiddlewares.
+  # Traefik doesn't buffer responses and talks HTTP/1.1 to backends by default,
+  # so the old nginx streaming annotations have no equivalent here.
+  ssoMiddlewares: false
   tls:
     enabled: true
     secretName: jelly-tls
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
-    nginx.ingress.kubernetes.io/backend-protocol: HTTP
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/proxy-buffering: "off"
-    nginx.ingress.kubernetes.io/use-http2: "false"
 
 # Co-locate jellyfin on the node that hosts the data volume (.227) so library
 # reads are node-local instead of crossing the network via NFS from another node.

@@ -31,16 +31,16 @@ initConfig:
 
 ingress:
   enabled: true
-  className: nginx
+  className: traefik
   host: media.thereedfamily.rocks
   path: /transmission
+  # Zitadel SSO (oauth2-proxy forwardAuth); /transmission/api bypasses it upstream where applicable
+  ssoMiddlewares: false
   tls:
     enabled: true
     secretName: transmission-tls
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
-    nginx.ingress.kubernetes.io/backend-protocol: HTTP
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
 
 # WireGuard VPN sidecar (gluetun). All values here are NON-secret.
 # The private key must live in a Secret (vpn.existingSecret) that is NOT committed:
