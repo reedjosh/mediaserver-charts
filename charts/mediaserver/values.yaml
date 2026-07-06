@@ -28,7 +28,14 @@ transmission:
 reencoder:
   enabled: true
 
-# Queue janitor: removes dead/stalled downloads and triggers a re-grab.
-# Needs the decluttarr-secrets Secret (RADARR_API_KEY + SONARR_API_KEY).
-decluttarr:
-  enabled: true
+# qBittorrent - replacement torrent client for transmission (better *arr
+# integration; stalled/metadata states surface natively in the queue).
+# OFF until cutover: it shares transmission's single WireGuard peer, and two
+# gluetun tunnels on the same key fight over the session. To cut over:
+#   1. create the qbittorrent-vpn Secret (same WIREGUARD_PRIVATE_KEY as
+#      transmission-vpn)
+#   2. flip transmission.enabled=false and qbittorrent.enabled=true (also in
+#      the Argo app's valuesObject, which carries the non-secret vpn overrides)
+#   3. re-point sonarr/radarr download client, re-add active torrents
+qbittorrent:
+  enabled: false

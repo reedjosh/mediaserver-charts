@@ -1,0 +1,77 @@
+image:
+  repository: docker.io/linuxserver/qbittorrent
+  tag: latest
+  pullPolicy: Always
+
+puid: 1000
+pgid: 1000
+tz: America/Denver
+
+# WEBUI_PORT tells the linuxserver image which port the web UI binds.
+# First start: grab the temporary admin password from the pod logs, log in,
+# and set a permanent one (Tools > Options > Web UI). While there, set the
+# default save path to /data/torrents (same layout as transmission, so the
+# *arr apps keep hardlinking into /data/media/*) and the listening port to
+# match ports.peer below.
+extraEnv:
+  WEBUI_PORT: "8080"
+
+storage:
+  configClaim: mediaserver-config
+  dataClaim: mediaserver-data
+  mountData: true
+
+ports:
+  webui: 8080
+  peer: 51517          # must match the VPN-forwarded port + qBittorrent's listening port
+
+service:
+  type: ClusterIP
+  port: 8080
+
+# qBittorrent's web UI cannot serve under a sub-path (no UrlBase equivalent),
+# so unlike transmission it gets its own host instead of a path on media.*.
+probe:
+  path: /
+
+initConfig:
+  enabled: false
+
+ingress:
+  enabled: true
+  className: traefik
+  host: qbit.thereedfamily.rocks
+  path: /
+  # qBittorrent's web UI has its own login; enable if you want Zitadel SSO
+  # (oauth2-proxy forwardAuth) in front of it as well.
+  ssoMiddlewares: false
+  tls:
+    enabled: true
+    secretName: qbittorrent-tls
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+
+# WireGuard VPN sidecar (gluetun), same pattern as transmission. All values
+# here are NON-secret; endpoint/publicKey/addresses come from the Argo app's
+# valuesObject. The private key must live in a Secret (vpn.existingSecret)
+# that is NOT committed:
+#   kubectl -n mediaserver create secret generic qbittorrent-vpn \
+#     --from-literal=WIREGUARD_PRIVATE_KEY=xxxxxxxx
+# NOTE: this is the SAME single WireGuard peer transmission uses - only one of
+# the two clients can be enabled at a time or the tunnels fight over the session.
+vpn:
+  enabled: true
+  image: qmcgaw/gluetun
+  serviceProvider: custom
+  type: wireguard
+  endpointIP: ""        # set in the Argo app valuesObject, not in git
+  endpointPort: 51820
+  publicKey: ""         # set in the Argo app valuesObject, not in git
+  addresses: ""         # e.g. 10.13.128.x/24
+  dnsKeepNameserver: "on"
+  firewallOutboundSubnets: ""
+  inputPorts: "51517"   # VPN-forwarded port opened inbound for seeding
+  existingSecret: qbittorrent-vpn
+
+nodeSelector: {}
+resources: {}
