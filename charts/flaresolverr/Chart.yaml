@@ -1,0 +1,10 @@
+apiVersion: v2
+name: flaresolverr
+description: FlareSolverr - Cloudflare challenge solver proxy for Prowlarr indexers (eztv, 1337x, torrentgalaxy).
+type: application
+version: 0.1.0
+appVersion: "latest"
+dependencies:
+  - name: common
+    version: 0.1.0
+    repository: file://../common
