@@ -76,7 +76,8 @@ data:
       if [ "${dur:-0}" -gt 0 ]; then
         kbps=$(( sz / 125 / dur ))
         cap=$(( kbps * ${REENCODE_MAXRATE_PCT:-100} / 100 ))
-        [ "$cap" -gt 0 ] && RATEOPT="-maxrate ${cap}k -bufsize $(( cap * 2 ))k"
+        # Scoped to v:0 — the cover-art video streams below are copied, not encoded.
+        [ "$cap" -gt 0 ] && RATEOPT="-maxrate:v:0 ${cap}k -bufsize:v:0 $(( cap * 2 ))k"
       fi
 
       out="${f%.*}.reencode.tmp.mkv"
@@ -84,9 +85,17 @@ data:
       # -threads caps decode (incl. software fallback) + encode; -filter_threads caps the
       # pix_fmt conversion. All ffmpeg work NUMA-pins to the GPU's socket (proc 2), so
       # uncapped threads turn one package into a hotspot while the other idles.
+      #
+      # Encode ONLY v:0. Library MKVs routinely carry poster/fanart/banner/thumb as
+      # extra mjpeg "video" streams (a Scooby-Doo rip here has four, down to 120x176).
+      # With a blanket -c:v the encoder is applied to those too, and NVENC rejects
+      # anything under its minimum frame size ("Frame dimensions are less than the
+      # minimum supported value") -> encoder init fails -> zero packets -> ffmpeg
+      # aborts the WHOLE file. That silently failed every single file for weeks.
+      # -c:v copy keeps the artwork bit-exact; -c:v:0 re-encodes the real video.
       # shellcheck disable=SC2086
       if ffmpeg -nostdin -y -threads "${THREADS:-6}" -filter_threads "${THREADS:-6}" $HWOPTS -i "$f" \
-                -map 0 -threads "${THREADS:-6}" -c:v "$ENC" $QOPT $RATEOPT -pix_fmt "$PIXFMT" \
+                -map 0 -threads "${THREADS:-6}" -c:v copy -c:v:0 "$ENC" $QOPT $RATEOPT -pix_fmt:v:0 "$PIXFMT" \
                 -c:a copy -c:s copy "$out" </dev/null 2>/tmp/ff.log; then
         d2=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$out" 2>/dev/null | cut -d. -f1)
         newsz=$(stat -c %s "$out" 2>/dev/null || echo 0)
@@ -106,7 +115,13 @@ data:
           count=$((count+1))
         fi
       else
-        echo "   ffmpeg error - keeping original:"; tail -3 /tmp/ff.log; rm -f "$out"
+        # Surface the actual cause, not just the tail: ffmpeg reports the real error
+        # (encoder init, bad param, unsupported pix_fmt) well ABOVE its final
+        # "Conversion failed!" lines, so a plain tail hides it.
+        echo "   ffmpeg error - keeping original:"
+        grep -iE "error|failed|invalid|not supported|no capable" /tmp/ff.log | head -5
+        tail -2 /tmp/ff.log
+        rm -f "$out"
       fi
     done
     echo "reencoder: done"
