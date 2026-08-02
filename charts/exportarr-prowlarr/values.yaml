@@ -1,0 +1,39 @@
+image:
+  repository: ghcr.io/onedr0p/exportarr
+  tag: v2.3.0
+  pullPolicy: IfNotPresent
+
+# exportarr's own listener; vmagent scrapes /metrics here. Not 9707 (the image's
+# EXPOSE default) only because nothing else in the namespace should collide.
+port: 9710
+
+# Prowlarr's in-cluster address INCLUDING its UrlBase — exportarr appends
+# /api/v1/... to this, and Prowlarr serves under /prowlarr.
+prowlarrUrl: http://prowlarr.mediaserver.svc.cluster.local:9696/prowlarr
+
+logLevel: info
+tz: America/Denver
+
+# Prowlarr generates its API key on first run and stores it in config.xml on the
+# shared RWX config PVC. An init container lifts it into an emptyDir for
+# exportarr's API_KEY_FILE, so the key stays out of git and out of a hand-made
+# Secret. puid/pgid are only for that init container (it reads NFS files owned
+# by the linuxserver.io uid); exportarr itself stays on the image's 65532.
+storage:
+  configClaim: mediaserver-config
+  prowlarrSubPath: prowlarr
+puid: 1000
+pgid: 1000
+
+service:
+  type: ClusterIP
+  port: 9710
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 128Mi
+
+nodeSelector: {}

@@ -24,6 +24,11 @@ prowlarr:
 # that wiring lives in Prowlarr's DB on the config PVC, not in git.
 flaresolverr:
   enabled: true
+# Prometheus exporter for Prowlarr's indexer health. Feeds the ProwlarrIndexers*
+# alerts in homelab-gitops (monitoring/rules/media-indexers.yaml), which page on
+# the working-indexer COUNT dropping rather than on any single indexer failing.
+exportarr-prowlarr:
+  enabled: true
 transmission:
   enabled: true
   # vpn keys are NOT set here - create the transmission-vpn Secret out of band.

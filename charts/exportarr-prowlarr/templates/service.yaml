@@ -1,0 +1,19 @@
+{{/*
+Not strictly needed for scraping (the VMPodScrape targets pods directly), but
+handy for hitting /metrics by hand when a rule looks wrong.
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    {{- include "mediaserver.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "mediaserver.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: metrics
+      port: {{ .Values.service.port }}
+      targetPort: metrics
+      protocol: TCP

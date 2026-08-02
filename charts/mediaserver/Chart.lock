@@ -14,6 +14,9 @@ dependencies:
 - name: flaresolverr
   repository: file://../flaresolverr
   version: 0.1.0
+- name: exportarr-prowlarr
+  repository: file://../exportarr-prowlarr
+  version: 0.1.0
 - name: transmission
   repository: file://../transmission
   version: 0.1.0
@@ -23,5 +26,5 @@ dependencies:
 - name: qbittorrent
   repository: file://../qbittorrent
   version: 0.1.0
-digest: sha256:d70beab5aab6aee0037222d99183efd7c4beb683e578ab827ffcfbe73dfaa081
-generated: "2026-07-08T23:01:40.204377507-05:00"
+digest: sha256:24f1b5b4ce214f096cb971d8879c2c5f7d28496b739c566e721718683bd32040
+generated: "2026-08-01T21:22:20.336369233-05:00"
