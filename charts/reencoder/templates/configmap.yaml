@@ -80,6 +80,47 @@ data:
         [ "$cap" -gt 0 ] && RATEOPT="-maxrate:v:0 ${cap}k -bufsize:v:0 $(( cap * 2 ))k"
       fi
 
+      # The output is Matroska, which refuses to write a header if ANY mapped stream
+      # uses a codec it can't store — and that failure surfaces as a bogus filter
+      # error ("Task finished with error code: -38 / Function not implemented"), so
+      # it reads like a video problem when it's really the muxer. Three cases exist
+      # in this library; work them out per file rather than guessing.
+      #
+      # NOTE: use `-of default=nw=1:nk=1`, NOT csv. csv appends a stray trailing
+      # comma when a stream has an empty trailing field ("mjpeg,"), which silently
+      # breaks the case matches below. And strip only ,/CR here — stripping all
+      # whitespace would eat the newlines these loops split on.
+
+      # 1. Data streams (bin_data/timecode): unstorable, and worthless in a library.
+      DROPOPT="-map -0:d?"
+
+      # 2. Cover art rides along as extra video streams. Matroska takes mjpeg/png
+      #    as-is; anything else (one bmp here) has to go or the mux dies.
+      i=0
+      for c in $(ffprobe -v error -select_streams v -show_entries stream=codec_name -of default=nw=1:nk=1 "$f" 2>/dev/null | tr -d ',\r'); do
+        if [ "$i" -gt 0 ]; then
+          case "$c" in mjpeg|png) : ;; *) DROPOPT="$DROPOPT -map -0:v:$i" ;; esac
+        fi
+        i=$((i+1))
+      done
+
+      # 3. Subtitles: convert ONLY what Matroska cannot hold — mov_text (mp4 tx3g)
+      #    and eia_608 CC. Everything else is copied, which matters enormously:
+      #    most of this library's subtitles are image-based (hdmv_pgs/dvd_subtitle)
+      #    and CANNOT become text, so a blanket -c:s srt would destroy them. Naming
+      #    every stream explicitly also stops ffmpeg from quietly transcoding the
+      #    unnamed ones to Matroska's default subtitle encoder (subrip -> ass).
+      SUBOPT=""
+      i=0
+      for c in $(ffprobe -v error -select_streams s -show_entries stream=codec_name -of default=nw=1:nk=1 "$f" 2>/dev/null | tr -d ',\r'); do
+        case "$c" in
+          mov_text|eia_608) SUBOPT="$SUBOPT -c:s:$i srt" ;;
+          *)                SUBOPT="$SUBOPT -c:s:$i copy" ;;
+        esac
+        i=$((i+1))
+      done
+      [ -z "$SUBOPT" ] && SUBOPT="-c:s copy"
+
       out="${f%.*}.reencode.tmp.mkv"
       echo ">> $f  ($vc ${h}p $((sz/1024/1024))MB ${kbps}kbps) -> $CODEC"
       # -threads caps decode (incl. software fallback) + encode; -filter_threads caps the
@@ -95,8 +136,8 @@ data:
       # -c:v copy keeps the artwork bit-exact; -c:v:0 re-encodes the real video.
       # shellcheck disable=SC2086
       if ffmpeg -nostdin -y -threads "${THREADS:-6}" -filter_threads "${THREADS:-6}" $HWOPTS -i "$f" \
-                -map 0 -threads "${THREADS:-6}" -c:v copy -c:v:0 "$ENC" $QOPT $RATEOPT -pix_fmt:v:0 "$PIXFMT" \
-                -c:a copy -c:s copy "$out" </dev/null 2>/tmp/ff.log; then
+                -map 0 $DROPOPT -threads "${THREADS:-6}" -c:v copy -c:v:0 "$ENC" $QOPT $RATEOPT -pix_fmt:v:0 "$PIXFMT" \
+                -c:a copy $SUBOPT "$out" </dev/null 2>/tmp/ff.log; then
         d2=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$out" 2>/dev/null | cut -d. -f1)
         newsz=$(stat -c %s "$out" 2>/dev/null || echo 0)
         if [ ! -s "$out" ] || [ "${d2:-0}" -lt "$(( ${dur:-0} - 2 ))" ]; then
