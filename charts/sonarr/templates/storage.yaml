@@ -1,0 +1,18 @@
+{{- if .Values.storage.createConfig }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.storage.configClaim }}
+  annotations:
+    # Removing the app must not silently delete its database.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+    helm.sh/resource-policy: keep
+  labels:
+    {{- include "mediaserver.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: {{ .Values.storage.configClass }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.configSize }}
+{{- end }}

@@ -16,6 +16,18 @@ radarr:
   enabled: true
 sonarr:
   enabled: true
+  # SQLite WAL must use a local filesystem, not the shared NFS config claim.
+  # Media already depends on this NFS server node; colocate the database there.
+  nodeSelector:
+    kubernetes.io/hostname: jayrdl3803
+  image:
+    # Keep the running version unchanged during the storage migration.
+    tag: latest@sha256:24acea2956a0ccb11f103877d9f4f8576600fb34bff34820ed749c2256dab89f
+  storage:
+    configClaim: sonarr-config-local
+    createConfig: true
+    configClass: local-path
+    configSize: 5Gi
 prowlarr:
   enabled: true
 # Cloudflare challenge solver for Prowlarr. Prowlarr reaches it in-cluster at
