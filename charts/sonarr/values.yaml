@@ -12,6 +12,9 @@ tz: America/Denver
 # into /data/media/tv.
 storage:
   configClaim: mediaserver-config
+  createConfig: false
+  configClass: local-path
+  configSize: 5Gi
   dataClaim: mediaserver-data
   mountData: true
 
