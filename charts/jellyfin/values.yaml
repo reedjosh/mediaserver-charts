@@ -13,6 +13,9 @@ tz: America/Denver
 # library paths jellyfin already has configured - no reconfig, no rescan.
 storage:
   configClaim: mediaserver-config
+  createConfig: false
+  configClass: local-path
+  configSize: 20Gi
   dataClaim: mediaserver-data
   mountData: false
   mediaMounts:

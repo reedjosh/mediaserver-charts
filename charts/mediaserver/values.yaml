@@ -12,6 +12,15 @@ storage:
 # values.yaml and already match the cluster - override here only as needed.
 jellyfin:
   enabled: true
+  # Keep SQLite on the node's SSD mirror; media remains on the HDD/NFS claim.
+  storage:
+    configClaim: jellyfin-config-local
+    createConfig: true
+    configClass: local-path
+    configSize: 20Gi
+  image:
+    # Preserve the installed version during storage cutover.
+    tag: latest@sha256:b8dcc7b71d0ea872b74314da4b995c0cf282b1778438c295996e7be88c70fdda
 radarr:
   enabled: true
 sonarr:
