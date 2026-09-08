@@ -41,5 +41,21 @@ ingress:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
 
+# API-owned settings reconciled after successful Argo CD syncs. No database writes.
+# Does not rename existing folders or force episode-file renaming.
+declarativeSettings:
+  enabled: false
+  image: docker.io/library/python:3.12-alpine
+  seriesFolderFormat: "{Series TitleYear}"
+  metadataFields:
+    seriesMetadata: true
+    seriesMetadataEpisodeGuide: false
+    seriesMetadataUrl: false
+    episodeMetadata: true
+    episodeImageThumb: false
+    seriesImages: false
+    seasonImages: false
+    episodeImages: false
+
 nodeSelector: {}
 resources: {}
