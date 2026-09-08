@@ -1,0 +1,74 @@
+{{- if .Values.declarativeSettings.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sonarr-declarative-settings
+  labels:
+    {{- include "mediaserver.labels" . | nindent 4 }}
+data:
+  settings.json: |
+    {{- dict "seriesFolderFormat" .Values.declarativeSettings.seriesFolderFormat "metadataFields" .Values.declarativeSettings.metadataFields | toPrettyJson | nindent 4 }}
+  reconcile-settings.py: |
+    {{- .Files.Get "files/reconcile-settings.py" | nindent 4 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sonarr-reconcile-settings
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+  labels:
+    {{- include "mediaserver.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 300
+  template:
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.puid }}
+        runAsGroup: {{ .Values.pgid }}
+        seccompProfile:
+          type: RuntimeDefault
+      {{- with .Values.nodeSelector }}
+      # Must share the node selected for Sonarr's local config volume.
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: reconcile
+          image: {{ .Values.declarativeSettings.image | quote }}
+          command: ["python", "-B", "/desired/reconcile-settings.py"]
+          env:
+            - name: SONARR_API_URL
+              value: http://sonarr:{{ .Values.port }}/sonarr/api/v3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          volumeMounts:
+            - name: desired
+              mountPath: /desired
+              readOnly: true
+            - name: config
+              mountPath: /config
+              subPath: sonarr
+              readOnly: true
+      volumes:
+        - name: desired
+          configMap:
+            name: sonarr-declarative-settings
+        - name: config
+          persistentVolumeClaim:
+            claimName: {{ .Values.storage.configClaim }}
+{{- end }}

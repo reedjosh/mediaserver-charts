@@ -16,6 +16,8 @@ radarr:
   enabled: true
 sonarr:
   enabled: true
+  declarativeSettings:
+    enabled: true
   # SQLite WAL must use a local filesystem, not the shared NFS config claim.
   # Media already depends on this NFS server node; colocate the database there.
   nodeSelector:
