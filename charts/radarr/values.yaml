@@ -1,6 +1,6 @@
 image:
   repository: docker.io/linuxserver/radarr
-  tag: latest
+  tag: 6.4.4.10685-ls324@sha256:084b3b2ab1d0ef930660727259546a241f2bdf67c9ed085d54bf1486a6887c9b
   pullPolicy: Always
 
 port: 7878

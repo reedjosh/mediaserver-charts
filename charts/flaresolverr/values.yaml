@@ -1,6 +1,6 @@
 image:
   repository: ghcr.io/flaresolverr/flaresolverr
-  tag: latest
+  tag: v3.5.2@sha256:c80ae007ce2ccdcd217a12426e4f039ef763ff90738c808d38810c3e59323767
   pullPolicy: Always
 
 # FlareSolverr's HTTP API port (Prowlarr talks to it here as an indexer proxy).
