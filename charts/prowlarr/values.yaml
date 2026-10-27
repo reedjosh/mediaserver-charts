@@ -1,6 +1,6 @@
 image:
   repository: docker.io/linuxserver/prowlarr
-  tag: latest
+  tag: 2.6.5.5623-ls165@sha256:b3b00047ed20f6ce2b16780145cb6a0acb51c9e28ea6aa6f5dcd33c7034f1797
   pullPolicy: Always
 
 port: 9696

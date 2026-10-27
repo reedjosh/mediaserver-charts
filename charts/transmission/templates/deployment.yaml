@@ -22,10 +22,15 @@ spec:
         # through the VPN; transmission (same netns) inherits the tunnel.
         - name: vpn
           image: {{ .Values.vpn.image }}
+          # NET_ADMIN covers routing and the iptables kill switch. The tun device is
+          # only opened if gluetun falls back to userspace WireGuard.
           securityContext:
-            privileged: true
+            privileged: false
             capabilities:
               add: ["NET_ADMIN"]
+          volumeMounts:
+            - name: tun
+              mountPath: /dev/net/tun
           env:
             - { name: VPN_SERVICE_PROVIDER, value: {{ .Values.vpn.serviceProvider | quote }} }
             - { name: VPN_TYPE,             value: {{ .Values.vpn.type | quote }} }
@@ -79,6 +84,12 @@ spec:
           {{- end }}
       volumes:
         {{- include "mediaserver.storageVolumes" . | nindent 8 }}
+        {{- if .Values.vpn.enabled }}
+        - name: tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

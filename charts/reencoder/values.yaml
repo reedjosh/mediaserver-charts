@@ -15,7 +15,7 @@ image:
   # CPU-only ffmpeg today. For NVENC later, swap to an ffmpeg image built with
   # nvenc support and set gpu.enabled=true (see below).
   repository: lscr.io/linuxserver/ffmpeg
-  tag: latest
+  tag: 9.0.2-cli-ls87@sha256:6547359fac23a2747e606d380e10267b2923a38f68485d9cacefd039e74d3aa8
   pullPolicy: IfNotPresent
 
 storage:
